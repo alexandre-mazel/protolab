@@ -57,14 +57,15 @@ def drawArrow( image, p, q, color, nArrowMagnitude = 9, nThickness=1, nLineType=
     #Draw the second segment
     cv2.line(image, p, q, color, nThickness, nLineType, nShift);
 
+def vect( pt1,pt2):
+    return [pt2[0]-pt1[0],pt2[1]-pt1[1]]
+    
 def findCircles( img_color ):
     """
     find the circle in an image, 
     return the 4 positions [ [x1,y1], [x2,y2], [x3,y3], [x4,y4], ] in range[0..1]
     the first will be the red one, following point will always be in the same order
     """
-    def vect( pt1,pt2):
-        return [pt2[0]-pt1[0],pt2[1]-pt1[1]]
         
     img = cv2.cvtColor( img_color, cv2.cv.CV_BGR2GRAY );
 
@@ -153,6 +154,12 @@ for filename in listFiles:
     img = cv2.imread( filename );
     #~ continue;
     circles = findCircles( img );
+    if( len(circles)== 4 ):    
+        nCptGood += 1;
+        dir = vect(circles[0], circles[1] );
+        rAngle = math.atan2( -dir[1], dir[0] );
+        print( "rAngle: %5.2fdeg" % (rAngle*180/math.pi) )
+        
     if( bRender ):
         # render stuffs
         if( 1 ):
@@ -171,13 +178,10 @@ for filename in listFiles:
             #~ cv2.line(img,pt1,pt2,(255,0,255),3);
             #~ cv2.circle(img,pt2,2,(255,0,255),5)
             drawArrow( img,pt1,pt2,(0,255,0),20, 3);
-            
-            nCptGood += 1;
-
 
     if(bRender):
         cv2.imshow( "mat", img );
-        cv2.waitKey(1)
+        cv2.waitKey(0)
         
     nCpt += 1;
 
