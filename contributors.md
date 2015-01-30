@@ -1,2 +1,2 @@
-Alexandre Mazel
-Laurent George
+- Alexandre Mazel
+- Laurent George
