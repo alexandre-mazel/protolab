@@ -72,9 +72,15 @@ def findCircles( img_color ):
     img = cv2.GaussianBlur( img, (3, 3), 5 );
     
     #~ img = cv2.pyrDown( img ); # PyrDown only divide by 2
+    
+    if( img.shape[1] == 320 ):
+        p1 = 10; p2 = 20; r=5;R=10;
+    else:
+        p1 = 180; p2 = 35; r=8;R=60;
+    
 
     # Apply the Hough Transform to find the circles
-    circles = cv2.HoughCircles( img, cv2.cv.CV_HOUGH_GRADIENT,dp=1, minDist = img.shape[0]/16, param1=10,param2=20,minRadius=5,maxRadius=10 );
+    circles = cv2.HoughCircles( img, cv2.cv.CV_HOUGH_GRADIENT,dp=1, minDist = img.shape[0]/16, param1=p1,param2=p2,minRadius=r,maxRadius=R );
     if( circles == None ):
         return [];
     circles = np.int16(np.around(circles))[0] # round the list and remove one level
@@ -137,12 +143,12 @@ def findCircles( img_color ):
 
     
 #filename = "2015_01_30-14h11m26s925179ms.jpg"
-strPath = "/home/likewise-open/ALDEBARAN/amazel/dev/git/protolab/data/circles_board/seq/";
+strPath = "/home/likewise-open/ALDEBARAN/amazel/dev/git/protolab/data/circles_board/seq2/";
 listFiles = sorted(os.listdir( strPath ))
 nCpt = 0;
 nCptGood = 0;
 timeBegin = time.time();
-bRender = 1;
+bRender = 0;
 for filename in listFiles:
     print( "%d: filename: %s" % (nCpt,filename) );
     filename =  strPath + filename;
