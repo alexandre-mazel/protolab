@@ -73,10 +73,8 @@ def findCircles( img_color ):
     
     #~ img = cv2.pyrDown( img ); # PyrDown only divide by 2
 
-        
-
     # Apply the Hough Transform to find the circles
-    circles = cv2.HoughCircles( img, cv2.cv.CV_HOUGH_GRADIENT,dp=1,minDist = img.shape[0]/16, param1=180,param2=35,minRadius=8,maxRadius=60 );
+    circles = cv2.HoughCircles( img, cv2.cv.CV_HOUGH_GRADIENT,dp=1, minDist = img.shape[0]/16, param1=10,param2=20,minRadius=5,maxRadius=10 );
     if( circles == None ):
         return [];
     circles = np.int16(np.around(circles))[0] # round the list and remove one level
@@ -139,7 +137,7 @@ def findCircles( img_color ):
 
     
 #filename = "2015_01_30-14h11m26s925179ms.jpg"
-strPath = "/home/likewise-open/ALDEBARAN/amazel/dev/git/protolab/data/circles_board/seq2/";
+strPath = "/home/likewise-open/ALDEBARAN/amazel/dev/git/protolab/data/circles_board/seq/";
 listFiles = sorted(os.listdir( strPath ))
 nCpt = 0;
 nCptGood = 0;
@@ -164,7 +162,7 @@ for filename in listFiles:
         # render stuffs
         if( 1 ):
             # render circle
-            print circles;
+            #~ print circles;
             for idx,circ in enumerate(circles):
                 # draw the outer circle
                 cv2.circle(img,(circ[0],circ[1]),10,(0,255,255*idx),2)    
@@ -181,10 +179,11 @@ for filename in listFiles:
 
     if(bRender):
         cv2.imshow( "mat", img );
-        cv2.waitKey(0)
+        cv2.waitKey(1)
+        #~ exit()
         
     nCpt += 1;
 
-print( "nCptGood: %d/%d (%5.0f%%)" % (nCptGood,nCpt,nCptGood*100/float(nCpt)) ) # current: 263/281
+print( "nCptGood: %d/%d (%5.0f%%)" % (nCptGood,nCpt,nCptGood*100/float(nCpt)) ) # current: 263/281 for seq1 and 12/13 for seq2
 print( "time total: %5.2fs" % (time.time() - timeBegin) ); # ~3.90s; just opening file takes 2secs
 cv2.destroyAllWindows()
