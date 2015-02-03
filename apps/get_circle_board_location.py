@@ -139,7 +139,7 @@ def findCircles( img_color ):
 
     
 #filename = "2015_01_30-14h11m26s925179ms.jpg"
-strPath = "/home/likewise-open/ALDEBARAN/amazel/dev/git/protolab/data/circles_board/seq/";
+strPath = "/home/likewise-open/ALDEBARAN/amazel/dev/git/protolab/data/circles_board/seq2/";
 listFiles = sorted(os.listdir( strPath ))
 nCpt = 0;
 nCptGood = 0;
