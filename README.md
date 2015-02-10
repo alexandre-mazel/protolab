@@ -20,8 +20,8 @@ Reminder:
 
 at home, to memorise my user/pass I had to do that:
 
-Set git to use the credential memory cache
-git config --global credential.helper cache
+    #Set git to use the credential memory cache
+    git config --global credential.helper cache
 
-To change the default password cache timeout, enter the following:
-git config --global credential.helper 'cache --timeout=3600'
+    #To change the default password cache timeout, enter the following:
+    git config --global credential.helper 'cache --timeout=3600'
