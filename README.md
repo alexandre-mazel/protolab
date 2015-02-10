@@ -15,8 +15,8 @@ python class to use:
 
 Reminder:
 
-to use your personnal id, in your repo enter:
-git config user.email youremail@domain.com
+    #to use your personnal id, in your repo enter:
+    git config user.email youremail@domain.com
 
 at home, to memorise my user/pass I had to do that:
 
