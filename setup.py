@@ -20,5 +20,5 @@ setup(
     author='lgeorge',
     author_email='laurent.george@srand.fr',
     packages=["protolab"],
-    py_modules=["image", "sensors", "webcam"],
+    py_modules=["geometry", "image", "sensors", "webcam"],
 )

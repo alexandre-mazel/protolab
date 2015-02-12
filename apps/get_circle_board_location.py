@@ -13,6 +13,7 @@ extract the board circle from some images as seens in data/circles_board
 ###########################################################
 
 import protolab.image
+import protolab.geometry
 
 import cv2
 import math
@@ -37,11 +38,9 @@ def autotest():
             
         img = cv2.imread( filename );
         #~ continue;
-        circles = protolab.image.findCircles( img );
-        if( len(circles)== 4 ):    
+        rAngle = protolab.image.getRotationFrom4Circles( img );
+        if( rAngle != None ):    
             nCptGood += 1;
-            dir = vect(circles[0], circles[1] );
-            rAngle = math.atan2( -dir[1], dir[0] );
             print( "rAngle: %5.2fdeg" % (rAngle*180/math.pi) )
             
         if( bRender ):
@@ -57,8 +56,8 @@ def autotest():
                         cv2.circle(img,(circ[0],circ[1]),2,(255,0,255),3)
                     
             if( len(circles)== 4 ):
-                pt1 = medt(circles[0],circles[3])
-                pt2 = medt(circles[1],circles[2])
+                pt1 = protolab.geometry.median(circles[0],circles[3])
+                pt2 = protolab.geometry.median(circles[1],circles[2])
                 #~ cv2.line(img,pt1,pt2,(255,0,255),3);
                 #~ cv2.circle(img,pt2,2,(255,0,255),5)
                 drawArrow( img,pt1,pt2,(0,255,0),20, 3);

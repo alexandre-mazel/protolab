@@ -1,4 +1,11 @@
+__author__ = 'lgeorge & amazel'
+
+import cv2
+import math
 import numpy as np
+
+import geometry
+
 
 def imageToString( im, timestamp = 0 ):
     """
@@ -21,11 +28,6 @@ def reddish(pt):
     """
     return int(pt[2]) - pt[1] -  pt[0];
     
-def medt( pt1,pt2):
-    return ( (pt2[0]+pt1[0])/2, (pt2[1]+pt1[1])/2);
-    
-def squared_distance(pt1,pt2):
-    return (pt2[0]-pt1[0])*(pt2[0]-pt1[0]) + (pt2[1]-pt1[1])*(pt2[1]-pt1[1]);
     
 def drawArrow( image, p, q, color, nArrowMagnitude = 9, nThickness=1, nLineType=8, nShift=0 ):
     # ported from http://mlikihazar.blogspot.fr/2013/02/draw-arrow-opencv.html
@@ -53,9 +55,6 @@ def drawArrow( image, p, q, color, nArrowMagnitude = 9, nThickness=1, nLineType=
     #Draw the second segment
     cv2.line(image, p, q, color, nThickness, nLineType, nShift);
 
-def vect( pt1,pt2):
-    return [pt2[0]-pt1[0],pt2[1]-pt1[1]]
-    
 def findCircles( img_color ):
     """
     find the circle in an image, 
@@ -108,7 +107,7 @@ def findCircles( img_color ):
     nIdx = -1;
     nDistMax = 0;
     for i in range( len(circles) ):
-        dist = squared_distance( ret[0], circles[i] );
+        dist = geometry.squared_distance( ret[0], circles[i] );
         if( dist > nDistMax ):
             nDistMax = dist;
             nIdx = i;
@@ -121,7 +120,7 @@ def findCircles( img_color ):
     nIdx = -1;
     nDistMax = 0;    
     for i in range( len(circles) ):
-        val = np.dot( vect(ret[0],ret[1]), vect(ret[0],circles[i] ) );
+        val = np.dot( geometry.vect(ret[0],ret[1]), geometry.vect(ret[0],circles[i] ) );
         #~ print( "val:%s" % val );
         if( val > nDistMax ):
             nDistMax = val;
@@ -135,3 +134,19 @@ def findCircles( img_color ):
     #~ ret.append( [ circles[nIdxRed][0], circles[nIdxRed][1] ] );
     return ret;
 # findCircles - end
+
+def getRotationFrom4Circles( img ):
+    """
+    get the rotation of the 4 circles shape.
+    return an angle in radians [0..2*pi] or None if no angle detected
+    """
+    circles = findCircles( img );
+    if( len(circles)== 4 ):    
+        dir = geometry.vect(circles[0], circles[1] );
+        rAngle = math.atan2( -dir[1], dir[0] );
+        #~ print( "rAngle: %5.2fdeg" % (rAngle*180/math.pi) )
+        return rAngle;
+    return None;
+# getRotationFrom4Circles - end
+        
+        
