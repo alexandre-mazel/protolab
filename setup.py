@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 # !/usr/bin/env python
 
+# to install, use:
+# python setup.py install --user
+
 import numpy as np
 
 __author__ = 'lgeorge'
@@ -17,4 +20,5 @@ setup(
     author='lgeorge',
     author_email='laurent.george@srand.fr',
     packages=["protolab"],
+    py_modules=["image", "sensors", "webcam"],
 )
