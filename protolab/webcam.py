@@ -22,6 +22,13 @@ def list_video_device():
         except IOError, e:
             print "    " + str(e)
 
+def get_video_devices():
+    import os
+    device_path = "/dev"
+    file_names = [os.path.join(device_path, x) for x in os.listdir(device_path) if x.startswith("video")]
+    return file_names
+
+
 class WebCam():
     """
     Access webcam(s) using video4linux (v4l2)
@@ -40,9 +47,10 @@ class WebCam():
         # return another size if it doesn't support the suggested one.
         self.size_x, self.size_y = self.video.set_format(nWidth, nHeight)
         print( "format is: %dx%d" % (self.size_x, self.size_y) );
-        
-        framerate = self.video.set_fps(30); # can't succeed in changing that on my cheap webcam, but work on my computer
-        print( "framerate is: %d" % (framerate) );
+
+        # not working on the webcam device.
+        #framerate = self.video.set_fps(30); # can't succeed in changing that on my cheap webcam, but work on my computer
+        #print( "framerate is: %d" % (framerate) );
         
         # Create a buffer to store image data in. This must be done before
         # calling 'start' if v4l2capture is compiled with libv4l2. Otherwise
@@ -70,7 +78,7 @@ class WebCam():
 
         #image = Image.fromstring("RGB", (size_x, size_y), image_data)
         #image.save(strFilename)
-        
+
         nparr = np.fromstring(image_data, np.uint8).reshape( self.size_y,self.size_x,3)
         nparr = cv2.cvtColor(nparr, cv2.cv.CV_BGR2RGB);
         return nparr
