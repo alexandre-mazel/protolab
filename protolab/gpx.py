@@ -1,6 +1,32 @@
-
-
+import datetime
+import random
+import time
 import xml.dom.minidom # for xml parsing
+
+def floatToStrComplete( f ):
+    """
+    return the minimal string complete representation with at least 1 digit after the "."
+    """
+    #~ intPart = int(f);
+    #~ strOut = "%d." % intPart;
+    #~ remaining = f-intPart;
+    #~ bFirst = True;
+    #~ while( remaining > 0.000001 or bFirst ):
+        #~ bFirst = False;
+        #~ print( "str: %s, remainging: %f" % (strOut, remaining))
+        #~ remaining *=10;
+        #~ intPart = int(remaining);
+        #~ if( remaining > 0.999999 and remaining < 1. ):
+            #~ intPart = 1;
+        #~ strOut += "%d" % intPart;
+        #~ remaining -= intPart;
+    #~ return strOut;
+    
+    strOut = "%12.9f" % f;
+    while( strOut[-1] == '0' and strOut[-2] != '.' ):
+        strOut = strOut[:-1];
+    return strOut;
+# floatToStrComplete - end
 
 def timeToGpxTime( timeToConvert = None ):
     """
@@ -11,25 +37,39 @@ def timeToGpxTime( timeToConvert = None ):
     
     - timeToConvert: python floating second time eg: 13123123.34 or None for current time
     """
-    import time
     if( timeToConvert == None ):
         timeToConvert = time.time();
         
-    import datetime
-    datetimeObject = datetime.datetime.utcfromtimestamp(timeToConvert)
-    strTimeStamp = datetimeObject.strftime( "%Y-%m-%dT%H:%M:%SZ" );    
-    print( "DBG: timeToGpxTime: %s => %s" % (timeToConvert,strTimeStamp) );
+    dt = datetime.datetime.fromtimestamp(timeToConvert) # was utcfromtimestamp
+    strTimeStamp = dt.strftime( "%Y-%m-%dT%H:%M:%SZ" );    
+    #~ print( "DBG: timeToGpxTime: %s => %s" % (timeToConvert,strTimeStamp) );
     return strTimeStamp;
     
 def gpxTimeToDateTime( timeToConvert ):
     """
     convert a GpxTime to a DateTime Object
     - timeToConvert: a string eg: "2014-09-02T08:33:01Z" 
-    """
-    import datetime
+    """    
     dt = datetime.datetime.strptime( timeToConvert, "%Y-%m-%dT%H:%M:%SZ");
     return dt;
     
+def gpxTimeToTime( timeToConvert ):
+    """
+    convert a GpxTime to a time Object
+    - timeToConvert: a string eg: "2014-09-02T08:33:01Z" 
+    """    
+    dt = gpxTimeToDateTime( timeToConvert );
+    t = time.mktime(dt.timetuple()) + dt.microsecond / 1E6
+    return t;
+    
+#~ def timeToGpxTime( timeToConvert ):
+    #~ """
+    #~ convert a time to a Gpx Time
+    #~ - timeToConvert: a string eg: "2014-09-02T08:33:01Z" 
+    #~ """ 
+    
+    #~ dt = datetime.fromtimestamp(timeToConvert)
+    #~ return 
 
     
 def domNodeTypeToString( nodeType ):
@@ -197,18 +237,18 @@ def domFindElementByPath( node, astrElementPathName ):
 
 
 class Pt:
-    def __init__( self, dt, la, lo, el ):
+    def __init__( self, t, la, lo, el ):
         """
-        dt, la, lo, el: datetime object, latitude, longitude, elevation in meter
+        dt, la, lo, el: time object, latitude, longitude, elevation in meter
         """
-        self.dt = dt
+        self.t = t
         self.la = la
         self.lo = lo
         self.el = el
         
     def __str__( self ):
         strOut = "";
-        strOut += "-- dt: %s\n" % self.dt.strftime( "%Y-%m-%d-%Hh%Mm%Ss%fus" );
+        strOut += "-- t: %s\n" % timeToGpxTime( self.t );
         strOut += "-- la: %s\n" % self.la;
         strOut += "-- lo: %s\n" % self.lo;
         strOut += "-- el: %s\n" % self.el;        
@@ -240,7 +280,7 @@ class Gpx:
         strOut = "";
         strOut += "- Creator: %s\n" % self.strCreator;
         strOut += "- Name: %s\n" % self.strName;
-        strOut += "- Time: %s\n" % self.strTime;
+        strOut += "- Time: %s\n" % timeToGpxTime( self.time );
         strOut += "- listPts: len: %d\n" % len(self.listPts);
         for i in range(4):
             if( len(self.listPts) > i ):
@@ -282,7 +322,8 @@ class Gpx:
         #print( "header: %s" % self.nodeToStr(gpx) );
         #print( domNodeToString( gpx, bRecurse=True ))
         #print( dir( gpx))
-        self.strTime = domNodeGetFirstValue( domFindElementByPath( gpx, ["gpx", "metadata","time"] ) );
+        strTime = domNodeGetFirstValue( domFindElementByPath( gpx, ["gpx", "metadata","time"] ) );
+        self.time = gpxTimeToTime(strTime)
         self.strName = findFirstValueFromElementByName( gpx, "name" ); # or gpx/trk/name
         self.strCreator = gpx.childNodes[0].getAttribute("creator");
         
@@ -293,11 +334,11 @@ class Gpx:
                 #~ print( domNodeToString( segment ) );
                 for ptNode in segment.childNodes:
                     if( ptNode.localName == "trkpt" ):
-                        la = ptNode.getAttribute("lat");
-                        lo = ptNode.getAttribute("lon");
-                        el = findFirstValueFromElementByName( ptNode, "ele" );
+                        la = float( ptNode.getAttribute("lat") );
+                        lo = float( ptNode.getAttribute("lon") );
+                        el = float( findFirstValueFromElementByName( ptNode, "ele" ) );
                         t = findFirstValueFromElementByName( ptNode, "time" );
-                        t = gpxTimeToDateTime( t );
+                        t = gpxTimeToTime( t );
                         pt = Pt( t, la, lo, el );
                         self.listPts.append( pt );
                     
@@ -313,25 +354,40 @@ class Gpx:
         print( "INF: Gpx.changeCreator: changing creator name from '%s' to '%s'" % (self.strCreator, strName) );
         self.strCreator = strName;
         
-    def modify( rPercent = 0.01 ):
+    def modify( self, rPercent = 0.01 ):
         """
         modify the track slightly to looks like "another track" but at quite same speed
         """
+        for i in range( len(self.listPts) ):
+            if( ( i == 0 or random.random() > 0.5 ) and i != len(self.listPts)-1 ):
+                # modify the point in direction to the future
+                dx = self.listPts[i+1].la - self.listPts[i].la
+                dy = self.listPts[i+1].lo - self.listPts[i].lo
+            else:
+                # modify the point in direction to the past
+                dx = self.listPts[i].la - self.listPts[i-1].la
+                dy = self.listPts[i].lo - self.listPts[i-1].lo
+            lendiff = random.random() * rPercent;
+            x = self.listPts[i].la +dx*lendiff;
+            y = self.listPts[i].lo +dy*lendiff;
+            self.listPts[i].la = x;
+            self.listPts[i].lo = y;            
+    # modify - end
         
     def write( self, strFilename ):
         file = open( strFilename, "wt" )
         file.write( "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" );
         file.write( "<gpx creator=\"%s\" version=\"%s\" xmlns=\"%s\" xmlns:xsi=\"%s\ xsi:schemaLocation=\"%s\">\n" % (self.strCreator, self.strGpxVersion,self.strns,self.strsxi,self.strSchemaLocation) );
         file.write( " <metadata>\n" );
-        file.write( "  <time>%s</time>\n" % timeToGpxTime(self.strTime) );
+        file.write( "  <time>%s</time>\n" % timeToGpxTime(self.time) );
         file.write( " </metadata>\n" );
         file.write( " <trk>\n");
         file.write( "  <name>%s</name>\n" % self.strName );        
         file.write( "  <trkseg>\n" );
         for pt in self.listPts:
-            file.write( "   <trkpt lat=\"%f\" lon=\"%f\">\n" % (pt.la, pt.lo) );
-            file.write( "    <ele>%f</ele>\n" % pt.el );
-            file.write( "    <time>%s</time>\n" % pt.t );
+            file.write( "   <trkpt lat=\"%s\" lon=\"%s\">\n" % ( floatToStrComplete(pt.la), floatToStrComplete(pt.lo) ) );
+            file.write( "    <ele>%s</ele>\n" % floatToStrComplete(pt.el) );
+            file.write( "    <time>%s</time>\n" % timeToGpxTime(pt.t) );
             file.write( "   </trkpt>\n" );
 
         file.write( "  </trkseg>\n" );
@@ -339,6 +395,9 @@ class Gpx:
         file.write( "</gpx>\n" );    
         
         file.close();
+    # write - end
+    
+    
 # class Gpx - end
         
         
