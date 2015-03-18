@@ -33,14 +33,14 @@ def timeToGpxTime( timeToConvert = None ):
     convert a python time to a gpx string formated time.
     Return a string eg: "2014-09-02T08:33:01Z" 
     
-    Z time is 2h sooner than paris summer time and perhaps 1h compared to winter time TODO: check it!
+    Z/UTC time is 2h sooner than paris summer time and perhaps 1h compared to winter time TODO: check it!
     
     - timeToConvert: python floating second time eg: 13123123.34 or None for current time
     """
     if( timeToConvert == None ):
         timeToConvert = time.time();
         
-    dt = datetime.datetime.fromtimestamp(timeToConvert) # was utcfromtimestamp
+    dt = datetime.datetime.utcfromtimestamp(timeToConvert) # fromtimestamp: no zone 'naive', utcfromtimestamp: use local timezone
     strTimeStamp = dt.strftime( "%Y-%m-%dT%H:%M:%SZ" );    
     #~ print( "DBG: timeToGpxTime: %s => %s" % (timeToConvert,strTimeStamp) );
     return strTimeStamp;
@@ -59,7 +59,7 @@ def gpxTimeToTime( timeToConvert ):
     - timeToConvert: a string eg: "2014-09-02T08:33:01Z" 
     """    
     dt = gpxTimeToDateTime( timeToConvert );
-    t = time.mktime(dt.timetuple()) + dt.microsecond / 1E6
+    t = time.mktime(dt.utctimetuple()) + dt.microsecond / 1E6
     return t;
     
 #~ def timeToGpxTime( timeToConvert ):
@@ -239,7 +239,7 @@ def domFindElementByPath( node, astrElementPathName ):
 class Pt:
     def __init__( self, t, la, lo, el ):
         """
-        dt, la, lo, el: time object, latitude, longitude, elevation in meter
+        dt, la, lo, el: time object in local area, latitude, longitude, elevation in meter
         """
         self.t = t
         self.la = la
@@ -273,7 +273,7 @@ class Gpx:
         self.strsxi = "http://www.w3.org/2001/XMLSchema-instance";
         self.strSchemaLocation = "http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd http://www.garmin.com/xmlschemas/GpxExtensions/v3 http://www.garmin.com/xmlschemas/GpxExtensionsv3.xsd http://www.garmin.com/xmlschemas/TrackPointExtension/v1 http://www.garmin.com/xmlschemas/TrackPointExtensionv1.xsd";
         self.strName = "(noname)";
-        self.time = time.time();        # a python time object
+        self.time = time.time();        # a python time object converted to local area
         self.listPts = [];  # for each item,  a Pt point
 
     def __str__( self ):
@@ -412,6 +412,11 @@ class Gpx:
         
         
 def autoTest():
+    current_time_utc = timeToGpxTime();
+    print( "Current Time UTC: %s" % current_time_utc );
+    current_time_utc2 = timeToGpxTime(gpxTimeToTime(timeToGpxTime()));
+    print( "Current Time UTC: %s" % current_time_utc2 );
+    assert( current_time_utc == current_time_utc2 );
     gpx = Gpx();
     gpx.read( "/tmp2/Morning Ride.gpx" );
     print( "original file:\n%s" % str(gpx) );    
