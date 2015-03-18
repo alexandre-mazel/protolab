@@ -356,7 +356,7 @@ class Gpx:
         print( "INF: Gpx.changeCreator: changing creator name from '%s' to '%s'" % (self.strCreator, strName) );
         self.strCreator = strName;
         
-    def modify( self, rPercent = 0.01 ):
+    def modify( self, rRatio = 0.01 ):
         """
         modify the track slightly to looks like "another track" but at quite same speed
         """
@@ -367,14 +367,65 @@ class Gpx:
                 dy = self.listPts[i+1].lo - self.listPts[i].lo
             else:
                 # modify the point in direction to the past
-                dx = self.listPts[i].la - self.listPts[i-1].la
-                dy = self.listPts[i].lo - self.listPts[i-1].lo
-            lendiff = random.random() * rPercent;
+                dx = self.listPts[i-1].la - self.listPts[i].la
+                dy = self.listPts[i-1].lo - self.listPts[i].lo
+            lendiff = random.random() * rRatio;
             x = self.listPts[i].la +dx*lendiff;
             y = self.listPts[i].lo +dy*lendiff;
             self.listPts[i].la = x;
             self.listPts[i].lo = y;            
     # modify - end
+    
+    def modifySpeed( self, rDurationRatio = 0.5 ):
+        """
+        modify the duration of a track
+        - rDurationRatio: [0.01 to inf] eg: 0.5 => speed * 2
+        """
+        if( len(self.listPts) < 2 ):
+            return;
+            
+        rDurationRatio = float(rDurationRatio)
+        
+        if( rDurationRatio < 0.001 ):
+            rDurationRatio = 0.001;
+
+            
+        newPts = [];
+        rDuration = self.listPts[-1].t - self.listPts[0].t;
+        nNewDuration = int(rDuration * rDurationRatio);
+        print( "INF: Gpx.modifySpeed: rDuration: %f, nNewDuration: %d" % (rDuration,nNewDuration) );
+        
+        nIdxCurrent = 0; # the first point from which to leave
+        newPts.append( self.listPts[0] );
+        rSimulatedReplayTime = self.listPts[0].t; # le temps pour relire dans le flux original en interpolant
+        for i in range( 1, nNewDuration ):
+            rSimulatedReplayTime = self.listPts[0].t + (i/rDurationRatio); # for each second, we should add the ratio
+            print( "rSimulatedReplayTime: %5.2f, nIdxCurrent: %d, listPts[nIdxCurrent].t: %f, listPts[nIdxCurrent+1].t: %f" % (rSimulatedReplayTime,nIdxCurrent,self.listPts[nIdxCurrent].t, self.listPts[nIdxCurrent+1].t) );
+            # find first check prior to current replay time
+            while( rSimulatedReplayTime >= self.listPts[nIdxCurrent+1].t ):
+                print( "rSimulatedReplayTime: %5.2f, nIdxCurrent: %d, listPts[nIdxCurrent].t: %f, listPts[nIdxCurrent+1].t: %f" % (rSimulatedReplayTime,nIdxCurrent,self.listPts[nIdxCurrent].t, self.listPts[nIdxCurrent+1].t) );
+                nIdxCurrent +=1;
+            rRatioInterpolate = ( rSimulatedReplayTime - self.listPts[nIdxCurrent].t ) / ( self.listPts[nIdxCurrent+1].t - self.listPts[nIdxCurrent].t )  
+            print( "interpolating %5.2f between index %d and %d" % (rRatioInterpolate,nIdxCurrent,nIdxCurrent+1) );
+            t = newPts[0].t + i;
+            la = self.listPts[nIdxCurrent].la + (self.listPts[nIdxCurrent+1].la-self.listPts[nIdxCurrent].la) * rRatioInterpolate;
+            lo = self.listPts[nIdxCurrent].lo + (self.listPts[nIdxCurrent+1].lo-self.listPts[nIdxCurrent].lo) * rRatioInterpolate;
+            el = self.listPts[nIdxCurrent].el + (self.listPts[nIdxCurrent+1].el-self.listPts[nIdxCurrent].el) * rRatioInterpolate;
+            p = Pt( t, la, lo, el );
+            newPts.append( p );
+        p = Pt( newPts[0].t+nNewDuration, self.listPts[-1].la, self.listPts[-1].lo, self.listPts[-1].el );
+        newPts.append( p );
+        self.listPts = newPts;
+    # modifySpeed - end
+    
+    def modifyDate( self, nNbrSecondToAdd = 60*60):
+        """
+        add a time decay to a full track
+        """
+        self.time += nNbrSecondToAdd;
+        for i in range( len(self.listPts) ):
+            self.listPts[i].t += nNbrSecondToAdd;
+    # modifyDate - end
         
     def write( self, strFilename ):
         file = open( strFilename, "wt" )
@@ -405,14 +456,6 @@ class Gpx:
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
 def autoTest():
     current_time_utc = timeToGpxTime();
     print( "Current Time UTC: %s" % current_time_utc );
@@ -423,7 +466,9 @@ def autoTest():
     gpx.read( "/tmp2/Morning Ride.gpx" );
     print( "original file:\n%s" % str(gpx) );    
     gpx.changeCreator();
-    gpx.modify();
+    #gpx.modify();
+    gpx.modifySpeed(0.75);
+    gpx.modifyDate(60*60*24);
     print( "final file:\n%s" % str(gpx) );    
     gpx.write( "/tmp2/new.gpx" );
     
