@@ -40,7 +40,8 @@ def timeToGpxTime( timeToConvert = None ):
     if( timeToConvert == None ):
         timeToConvert = time.time();
         
-    dt = datetime.datetime.utcfromtimestamp(timeToConvert) # fromtimestamp: no zone 'naive', utcfromtimestamp: use local timezone
+    dt = datetime.datetime.fromtimestamp(timeToConvert) # fromtimestamp: no zone 'naive', utcfromtimestamp: use local timezone and convert to utc
+    #~ print( "DBG: timeToGpxTime: dt tz: %s" % dt.tzinfo );
     strTimeStamp = dt.strftime( "%Y-%m-%dT%H:%M:%SZ" );    
     #~ print( "DBG: timeToGpxTime: %s => %s" % (timeToConvert,strTimeStamp) );
     return strTimeStamp;
@@ -59,7 +60,8 @@ def gpxTimeToTime( timeToConvert ):
     - timeToConvert: a string eg: "2014-09-02T08:33:01Z" 
     """    
     dt = gpxTimeToDateTime( timeToConvert );
-    t = time.mktime(dt.utctimetuple()) + dt.microsecond / 1E6
+    dt.replace(tzinfo = None);
+    t = time.mktime(dt.timetuple()) + dt.microsecond / 1E6 # using utctimetuple or just timetuple
     return t;
     
 #~ def timeToGpxTime( timeToConvert ):
