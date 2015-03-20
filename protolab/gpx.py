@@ -1,11 +1,13 @@
+import copy
 import datetime
 import random
 import time
 import xml.dom.minidom # for xml parsing
 
-def floatToStrComplete( f ):
+def floatToStrComplete( f, nLimitToNbrDecimal = -1 ):
     """
     return the minimal string complete representation with at least 1 digit after the "."
+    - nLimitToNbrDecimal: limit to n decimal after the comma
     """
     #~ intPart = int(f);
     #~ strOut = "%d." % intPart;
@@ -22,13 +24,19 @@ def floatToStrComplete( f ):
         #~ remaining -= intPart;
     #~ return strOut;
     
-    strOut = "%12.9f" % f;
+    
+    strFmt = "%12.9f";
+    if( nLimitToNbrDecimal != -1 ):
+        strFmt = "%%12.%df" % nLimitToNbrDecimal;
+    strOut = strFmt % f;
     while( strOut[-1] == '0' and strOut[-2] != '.' ):
         strOut = strOut[:-1];
+    while( strOut[0] == ' ' ):
+        strOut = strOut[1:];        
     return strOut;
 # floatToStrComplete - end
 
-def timeToGpxTime( timeToConvert = None ):
+def timeToGpxTime( timeToConvert = None, bFileWritableFmt = False ):
     """
     convert a python time to a gpx string formated time.
     Return a string eg: "2014-09-02T08:33:01Z" 
@@ -42,7 +50,10 @@ def timeToGpxTime( timeToConvert = None ):
         
     dt = datetime.datetime.fromtimestamp(timeToConvert) # fromtimestamp: no zone 'naive', utcfromtimestamp: use local timezone and convert to utc
     #~ print( "DBG: timeToGpxTime: dt tz: %s" % dt.tzinfo );
-    strTimeStamp = dt.strftime( "%Y-%m-%dT%H:%M:%SZ" );    
+    if( not bFileWritableFmt ):
+        strTimeStamp = dt.strftime( "%Y-%m-%dT%H:%M:%SZ" );    
+    else:
+        strTimeStamp = dt.strftime( "%Y_%m_%d__%H_%M_%S" );    
     #~ print( "DBG: timeToGpxTime: %s => %s" % (timeToConvert,strTimeStamp) );
     return strTimeStamp;
     
@@ -277,7 +288,17 @@ class Gpx:
         self.strName = "(noname)";
         self.time = time.time();        # a python time object converted to local area
         self.listPts = [];  # for each item,  a Pt point
-
+        
+    def copy( self, rhs ):
+        self.strCreator = rhs.strCreator[:]
+        self.strGpxVersion = rhs.strGpxVersion[:]
+        self.strns = rhs.strns[:]
+        self.strsxi = rhs.strsxi[:]
+        self.strSchemaLocation = rhs.strSchemaLocation[:]
+        self.strName = rhs.strName[:]
+        self.time = rhs.time;
+        self.listPts = copy.deepcopy( rhs.listPts );
+        
     def __str__( self ):
         strOut = "";
         strOut += "- Creator: %s\n" % self.strCreator;
@@ -355,6 +376,9 @@ class Gpx:
             strName = self.getCreatorDefaultName();
         print( "INF: Gpx.changeCreator: changing creator name from '%s' to '%s'" % (self.strCreator, strName) );
         self.strCreator = strName;
+
+    def changeName( self, strName ):
+        self.strName = strName;
         
     def modify( self, rRatio = 0.01 ):
         """
@@ -400,13 +424,13 @@ class Gpx:
         rSimulatedReplayTime = self.listPts[0].t; # le temps pour relire dans le flux original en interpolant
         for i in range( 1, nNewDuration ):
             rSimulatedReplayTime = self.listPts[0].t + (i/rDurationRatio); # for each second, we should add the ratio
-            print( "rSimulatedReplayTime: %5.2f, nIdxCurrent: %d, listPts[nIdxCurrent].t: %f, listPts[nIdxCurrent+1].t: %f" % (rSimulatedReplayTime,nIdxCurrent,self.listPts[nIdxCurrent].t, self.listPts[nIdxCurrent+1].t) );
+            #~ print( "rSimulatedReplayTime: %5.2f, nIdxCurrent: %d, listPts[nIdxCurrent].t: %f, listPts[nIdxCurrent+1].t: %f" % (rSimulatedReplayTime,nIdxCurrent,self.listPts[nIdxCurrent].t, self.listPts[nIdxCurrent+1].t) );
             # find first check prior to current replay time
             while( rSimulatedReplayTime >= self.listPts[nIdxCurrent+1].t ):
-                print( "rSimulatedReplayTime: %5.2f, nIdxCurrent: %d, listPts[nIdxCurrent].t: %f, listPts[nIdxCurrent+1].t: %f" % (rSimulatedReplayTime,nIdxCurrent,self.listPts[nIdxCurrent].t, self.listPts[nIdxCurrent+1].t) );
+                #~ print( "rSimulatedReplayTime: %5.2f, nIdxCurrent: %d, listPts[nIdxCurrent].t: %f, listPts[nIdxCurrent+1].t: %f" % (rSimulatedReplayTime,nIdxCurrent,self.listPts[nIdxCurrent].t, self.listPts[nIdxCurrent+1].t) );
                 nIdxCurrent +=1;
             rRatioInterpolate = ( rSimulatedReplayTime - self.listPts[nIdxCurrent].t ) / ( self.listPts[nIdxCurrent+1].t - self.listPts[nIdxCurrent].t )  
-            print( "interpolating %5.2f between index %d and %d" % (rRatioInterpolate,nIdxCurrent,nIdxCurrent+1) );
+            #~ print( "interpolating %5.2f between index %d and %d" % (rRatioInterpolate,nIdxCurrent,nIdxCurrent+1) );
             t = newPts[0].t + i;
             la = self.listPts[nIdxCurrent].la + (self.listPts[nIdxCurrent+1].la-self.listPts[nIdxCurrent].la) * rRatioInterpolate;
             lo = self.listPts[nIdxCurrent].lo + (self.listPts[nIdxCurrent+1].lo-self.listPts[nIdxCurrent].lo) * rRatioInterpolate;
@@ -428,9 +452,18 @@ class Gpx:
     # modifyDate - end
         
     def write( self, strFilename ):
+        """        
+        - strFilename: if it's a folder name (end by /), will generate the name from it's date and name
+        Return the name of the filename
+        """
+        if( strFilename[-1] == '/' ):
+            strFilename += timeToGpxTime(self.time, bFileWritableFmt = True ) + "__" + self.strName + ".gpx";
+            
+        print( "INF: gpx.write: writing to '%s'..." % strFilename );
+            
         file = open( strFilename, "wt" )
         file.write( "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" );
-        file.write( "<gpx creator=\"%s\" version=\"%s\" xmlns=\"%s\" xmlns:xsi=\"%s\ xsi:schemaLocation=\"%s\">\n" % (self.strCreator, self.strGpxVersion,self.strns,self.strsxi,self.strSchemaLocation) );
+        file.write( "<gpx creator=\"%s\" version=\"%s\" xmlns=\"%s\" xmlns:xsi=\"%s\" xsi:schemaLocation=\"%s\">\n" % (self.strCreator, self.strGpxVersion,self.strns,self.strsxi,self.strSchemaLocation) );
         file.write( " <metadata>\n" );
         file.write( "  <time>%s</time>\n" % timeToGpxTime(self.time) );
         file.write( " </metadata>\n" );
@@ -439,7 +472,7 @@ class Gpx:
         file.write( "  <trkseg>\n" );
         for pt in self.listPts:
             file.write( "   <trkpt lat=\"%s\" lon=\"%s\">\n" % ( floatToStrComplete(pt.la), floatToStrComplete(pt.lo) ) );
-            file.write( "    <ele>%s</ele>\n" % floatToStrComplete(pt.el) );
+            file.write( "    <ele>%s</ele>\n" % floatToStrComplete(pt.el, nLimitToNbrDecimal=1) );
             file.write( "    <time>%s</time>\n" % timeToGpxTime(pt.t) );
             file.write( "   </trkpt>\n" );
 
@@ -448,10 +481,56 @@ class Gpx:
         file.write( "</gpx>\n" );    
         
         file.close();
+        
+        return strFilename;
     # write - end
     
     
 # class Gpx - end
+
+def generateWeek( strMondayDate ):
+    """
+    Generate a week of commuting based on two reference
+    - strMondayDate: monday date well formated eg: "2015-03-19"
+    """
+    nNbrSecPerDay = 60*60*24;
+    for strRefName in ["2015_03_19__Morning_Ride_ref","2015_03_19__Evening_Ride_ref"]:    
+        strName = "candi-issy";
+        if( "Evening" in strRefName ):
+            strName = "issy-candi";
+        gpx = Gpx();
+        gpx.read( "../data/gpx/%s.gpx" % strRefName );        
+        # found nbr different day
+        dt = datetime.datetime.strptime( strMondayDate, "%Y-%m-%d");
+        tMonday = time.mktime(dt.timetuple()) + dt.microsecond / 1E6 # using utctimetuple or just timetuple
+        nNbrDiffDay = 0;
+        if( tMonday < gpx.time ):
+            nNbrDiffDay = -int(( gpx.time - tMonday ) /nNbrSecPerDay);
+        else:
+            nNbrDiffDay = int( ( tMonday - gpx.time ) /nNbrSecPerDay );
+            nNbrDiffDay += 1; # for partial day
+        print( "nNbrDiffDay between ref and monday: %s" % nNbrDiffDay );
+        
+        for i in range(5):
+            gpxNew = Gpx();
+            gpxNew.copy( gpx );
+            gpxNew.changeCreator();
+            gpxNew.changeName( strName );
+            gpxNew.modifyDate( (nNbrDiffDay+i) * nNbrSecPerDay );
+            gpxNew.modifySpeed( 0.9+random.random()*0.21)
+            print( gpx );
+            print( gpxNew );
+            strNewName = gpxNew.write( "/tmp/" );
+            gpxNew.reset();
+            gpxNew.read( strNewName );
+            
+            
+                
+
+        
+
+    
+    
         
         
         
@@ -470,9 +549,10 @@ def autoTest():
     gpx.modifySpeed(0.75);
     gpx.modifyDate(60*60*24);
     print( "final file:\n%s" % str(gpx) );    
-    gpx.write( "/tmp2/new.gpx" );
-    
+    gpx.write( "/tmp/new.gpx" );
     
     
 if __name__ == "__main__":
-    autoTest();
+    #autoTest();
+    #generateWeek( "2015-03-16" );
+    generateWeek( "2015-03-02" );

@@ -148,5 +148,3 @@ def getRotationFrom4Circles( img ):
         return rAngle;
     return None;
 # getRotationFrom4Circles - end
-        
-        
