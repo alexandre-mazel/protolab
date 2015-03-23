@@ -6,6 +6,33 @@ import numpy as np
 
 import geometry
 
+class StdCamera:
+    def __init__(self):
+        self.cameraMatrixRef1080 = np.array([[  1.10561144e+03 ,  0.00000000e+00 ,  6.42505603e+02], [  0.00000000e+00 ,  1.11245814e+03 ,  4.96053152e+02], [  0.00000000e+00 ,  0.00000000e+00 ,  1.00000000e+00]])
+        self.aCameraMatrix = []; # intrinsics for each resolution
+        for rScale in [ 0.125, 0.25, 0.5, 1.0 ]:
+            self.aCameraMatrix.append( self.cameraMatrixRef1080 * rScale );         # scale ratio compared to 640x480, for example in 320x240 scale ratio = 0.5, in 1280x960 scale ration = 2 , calibration matrix has been computed based on 640x480 resolution
+            
+        self.distorsionCoef = np.array([[ -3.14724137e-03],[  3.09723474e-01],[  1.13771499e-03],[  5.07460018e-05],[  3.39670453e+00],[  6.74398801e-03],[  7.48274002e-01],[  2.14113693e+00]])
+
+    def getCameraMatrix( self, nWidth = 160 ):
+        if( nWidth == 160 ):
+            nResolution = 0;
+        elif( nWidth == 320 ):
+            nResolution = 1;
+        elif( nWidth == 640 ):
+            nResolution = 2;
+        elif( nWidth == 1280 ):
+            nResolution = 3;            
+        else:
+            assert( ("unknown resolution: %d" % nWidth) == 0 );
+        assert( nResolution >= 0 and nResolution < len(self.aCameraMatrix) );
+        return self.aCameraMatrix[nResolution];
+
+    def getDistorsionCoef( self ):
+        return self.distorsionCoef;
+        
+# class StdCamera - end
 
 def imageToString( im, timestamp = 0 ):
     """
@@ -74,14 +101,21 @@ def findCircles( img_color, cColor = 'r' ):
         
     img = cv2.cvtColor( img_color, cv2.cv.CV_BGR2GRAY );
 
-    img = cv2.GaussianBlur( img, (3, 3), 5 );
+    if( cColor != 'b' or img.shape[1] <= 160 ):
+        img = cv2.GaussianBlur( img, (3, 3), 5 );
     
     #~ img = cv2.pyrDown( img ); # PyrDown only divide by 2
     
+    #~ cv2.imshow( "mat", img );
+    #~ cv2.waitKey(0)
+    
     if( img.shape[1] == 320 ):
-        p1 = 10; p2 = 20; r=5;R=10;
+        p1 = 10; p2 = 20; r=5; R=10;
     else:
-        p1 = 180; p2 = 35; r=8;R=60;
+        p1 = 180; p2 = 35; r=8; R=60;
+
+    if( cColor == 'b' ):
+        p1 = 180; p2 = 35; r=8; R=img.shape[1]/2;
     
 
     # Apply the Hough Transform to find the circles
@@ -120,7 +154,7 @@ def findCircles( img_color, cColor = 'r' ):
     nIdx = -1;
     nDistMax = 0;
     for i in range( len(circles) ):
-        dist = geometry.squared_distance( ret[0], circles[i] );
+        dist = geometry.squared_distance( ret[0], [float(circles[i][0]),float(circles[i][1])] ); # convert to float and to a standard array to suppress a warning: "RuntimeWarning: overflow encountered in short_scalars"
         if( dist > nDistMax ):
             nDistMax = dist;
             nIdx = i;
@@ -145,8 +179,10 @@ def findCircles( img_color, cColor = 'r' ):
         ret.append( [ circles[0][0], circles[0][1] ] );
     
     #~ ret.append( [ circles[nIdxColored][0], circles[nIdxColored][1] ] );
+    print( "DBG: findCircles: returning: %s" % str(ret) );
     return ret;
 # findCircles - end
+
 
 def getRotationFrom4Circles( img ):
     """
@@ -161,3 +197,70 @@ def getRotationFrom4Circles( img ):
         return rAngle;
     return None;
 # getRotationFrom4Circles - end
+
+class WallCircleBoard:
+    def __init__( self ):
+        # distance between center in mm: we compute the medium between internal and external distance. w external: 549mm internal: 180 => 364.5 h: 414-46 => 230
+        self.w = 364.5
+        self.h = 230.0
+        self.cColor = 'b'
+    def size( self ):
+        return (self.w,self.h);
+
+def findCirclesPos( im, boardConfiguration, cColor = 'r' ):
+    """
+    compute the distance and orientation of the circles board
+    - boardConfiguration: (w,h): the real distance in mm between each center
+    return: [x,y,z,t]
+        - x: side distance of the board center to the image center in image camera relative [-1,1]
+        - y: elevation distance [-1,1]
+        - d: distance between robot and circles (in m)
+        - rx: angle around the robot x angle in radians [0..2*pi]
+    """
+    circles = findCircles( im, cColor );
+    print( "INF: findCirclesPos: circles: %s" % circles );
+    
+    if( len(circles) < 4 ):
+        return None;
+    #avgx = circles[0][0] - circles[0][0];
+    
+    #~ aCameraMatrix = camera.camera.aCameraMatrix[nResolution]
+    #~ aDistorsionCoefs = camera.camera.distorsionCoef    
+    a = np.array( [ +boardConfiguration[0]/2, +boardConfiguration[1]/2, 0 ] ); # the blue one
+    b = np.array( [ -boardConfiguration[0]/2, +boardConfiguration[1]/2, 0 ] );
+    c = np.array( [ -boardConfiguration[0]/2, -boardConfiguration[1]/2, 0 ] );
+    d = np.array( [ +boardConfiguration[0]/2, -boardConfiguration[1]/2, 0 ] );
+
+    aRealPts = np.array([a, b, c, d])
+    
+    for i in range( len(circles) ):
+        circles[i][0] = float( circles[i][0] );
+        circles[i][1] = float( circles[i][1] );
+        
+    aImPts = np.array( circles );
+    
+    cameraMatrix = StdCamera().getCameraMatrix(im.shape[1]);
+    distCoeffs = StdCamera().getDistorsionCoef();
+    retPnp = cv2.solvePnP( aRealPts, aImPts, cameraMatrix, distCoeffs );
+    print( "DBG: findCirclesPos: retPnp: %s" % str(retPnp) );    
+    bSuccess = retPnp[0];
+    aRotVector = retPnp[1];
+    aTransVector = retPnp[2];
+    
+    retVal = [0,0,0,0];
+    return retVal;
+# findCirclesPos - end    
+
+def autotest_findCirclesPos():
+    files = ["wall_circles_qqvga", "wall_circles_qvga", "wall_circles_vga", "wall_circles_4vga" ];
+    theoricalResults = [0,0,0];
+    for file in files:
+        strFilename = "../data/circles_board/wall_circles/%s.png" % file;
+        print( "INF: testing on strFilename: %s" % strFilename );
+        im = cv2.imread( strFilename );
+        pos = findCirclesPos(im, WallCircleBoard().size(), WallCircleBoard().cColor );
+        print( "INF: autotest_findCirclesPos: pos: %s" % pos );
+    
+
+if __name__ == "__main__":
+    autotest_findCirclesPos();

@@ -1,0 +1,4 @@
+Pepper positionné avec:
+laser at 53cm (hors tout a 49cm d'un coté et 49.5 de l'autre):
+
+Le wall fait cf protolab/image.py class WallCircleBoard
