@@ -28,6 +28,13 @@ def reddish(pt):
     """
     return int(pt[2]) - pt[1] -  pt[0];
     
+def blueish(pt):
+    """
+    return the reddishity of a point  [-510,255]. The biggest the reddest
+    """
+    return int(pt[0]) - pt[1] -  pt[2];
+        
+    
     
 def drawArrow( image, p, q, color, nArrowMagnitude = 9, nThickness=1, nLineType=8, nShift=0 ):
     # ported from http://mlikihazar.blogspot.fr/2013/02/draw-arrow-opencv.html
@@ -55,11 +62,14 @@ def drawArrow( image, p, q, color, nArrowMagnitude = 9, nThickness=1, nLineType=
     #Draw the second segment
     cv2.line(image, p, q, color, nThickness, nLineType, nShift);
 
-def findCircles( img_color ):
+def findCircles( img_color, cColor = 'r' ):
     """
     find the circle in an image, 
     return the 4 positions [ [x1,y1], [x2,y2], [x3,y3], [x4,y4], ] in range[0..1]
     the first will be the red one, following point will always be in the same order
+    - cColor: the first letter of the first color
+        - 'r': red circle with 3 other black/blue one .
+        - 'b': blue circle with 3 other black
     """
         
     img = cv2.cvtColor( img_color, cv2.cv.CV_BGR2GRAY );
@@ -86,19 +96,22 @@ def findCircles( img_color ):
         return circles
     
     # search for the red one:
-    nIdxRed = 0;
-    maxRed = reddish(img_color[circles[0][1],circles[0][0]]);
+    colorFunc = reddish;
+    if( cColor == 'b' ):
+        colorFunc = blueish;    
+    nIdxColored = 0;
+    maxColored = colorFunc(img_color[circles[0][1],circles[0][0]]);
     #~ print( "maxRed: %d" % maxRed );
     for idx in range( 1, len(circles) ):
-        val = reddish(img_color[ circles[idx][1], circles[idx][0] ]);
-        if( val > maxRed ):
-            maxRed = val;
-            nIdxRed=idx;
+        val = colorFunc(img_color[ circles[idx][1], circles[idx][0] ]);
+        if( val > maxColored ):
+            maxColored = val;
+            nIdxColored=idx;
     
     ret = [];
-    ret.append( [ circles[nIdxRed][0], circles[nIdxRed][1] ] );
+    ret.append( [ circles[nIdxColored][0], circles[nIdxColored][1] ] );
 
-    circles = np.delete(circles, nIdxRed,axis=0);
+    circles = np.delete(circles, nIdxColored,axis=0);
     
     
     # return the other one in the right order
@@ -131,7 +144,7 @@ def findCircles( img_color ):
     if( len(circles)>0):
         ret.append( [ circles[0][0], circles[0][1] ] );
     
-    #~ ret.append( [ circles[nIdxRed][0], circles[nIdxRed][1] ] );
+    #~ ret.append( [ circles[nIdxColored][0], circles[nIdxColored][1] ] );
     return ret;
 # findCircles - end
 

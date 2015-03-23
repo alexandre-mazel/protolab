@@ -6,9 +6,9 @@
 
 import numpy as np
 
-__author__ = 'lgeorge'
+__author__ = 'lgeorge & amazel'
 __version__ = "0.0.1"
-__maintainer__ = 'lgeorge'
+__maintainer__ = 'lgeorge & amazel'
 __status__ = "Dev"
 
 
@@ -20,5 +20,5 @@ setup(
     author='lgeorge',
     author_email='laurent.george@srand.fr',
     packages=["protolab"],
-    py_modules=["geometry", "image", "sensors", "webcam"],
+    py_modules=["geometry", "gpx", "image", "sensors", "webcam"],
 )
