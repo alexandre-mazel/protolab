@@ -104,10 +104,17 @@ def findCircles( img_color, cColor = 'r' ):
         
     img = cv2.cvtColor( img_color, cv2.cv.CV_BGR2GRAY );
 
-    if( cColor != 'b' or img.shape[1] <= 160 ):
+    if( cColor == 'g' ):
         img = cv2.GaussianBlur( img, (3, 3), 5 );
-        
-    #~ img = cv2.GaussianBlur( img, (15, 15), 0 );
+    else:
+        if( img.shape[1] <= 160 ):
+            img = cv2.GaussianBlur( img, (3, 3), 5 );
+        elif( img.shape[1] <= 320 ):
+            img = cv2.GaussianBlur( img, (5, 5), 5 ); # TODO: tune me!
+        elif( img.shape[1] <= 320 ):
+            img = cv2.GaussianBlur( img, (7, 7), 5 ); # TODO: tune me!
+        elif( img.shape[1] <= 1280 ):
+            img = cv2.GaussianBlur( img, (15, 15), 10 );
     
     #~ img = cv2.pyrDown( img ); # PyrDown only divide by 2
     
@@ -120,12 +127,12 @@ def findCircles( img_color, cColor = 'r' ):
         p1 = 180; p2 = 35; r=8; R=60;
 
     if( cColor == 'b' ):
-        p1 = 110; p2 = 35; r=16; R=img.shape[1]/2;
+        p1 = 100; p2 = 35; r=16; R=img.shape[1]/2;
     
 
     # Apply the Hough Transform to find the circles
     circles_detected = cv2.HoughCircles( img, cv2.cv.CV_HOUGH_GRADIENT,dp=1, minDist = img.shape[0]/16, param1=p1,param2=p2,minRadius=r,maxRadius=R );
-    print( "circles_detected: %s" % circles_detected );  # a list of x,y,radius    
+    #~ print( "circles_detected: %s" % circles_detected );  # a list of x,y,radius    
     if( circles_detected == None ):
         return [];
     circles = np.int16(np.around(circles_detected))[0] # round the list and remove one level
@@ -134,10 +141,12 @@ def findCircles( img_color, cColor = 'r' ):
         for idx,circ in enumerate(circles):
             cv2.circle(img_color,(circ[0],circ[1]),circ[2],(0,255,255),2)    
 
-    print( "circles: %s" % circles );
+    #~ print( "circles: %s" % circles );
     print( "nbr detected circles: %s" % len(circles) );
     #~ return circles;
     if( len(circles) != 4 ):
+        cv2.imshow( "circles", img_color );
+        cv2.waitKey(0)            
         return circles;
         
     # check all radius are equal:
@@ -166,26 +175,8 @@ def findCircles( img_color, cColor = 'r' ):
 
     circles = np.delete(circles, nIdxColored,axis=0);
     
-    
-    # return the other one in the right order
-    
-    # find the farest
-    nIdx = -1;
-    nDistMax = 0;
-    for i in range( len(circles) ):
-        dist = geometry.squared_distance( ret[0], [float(circles[i][0]),float(circles[i][1])] ); # convert to float and to a standard array to suppress a warning: "RuntimeWarning: overflow encountered in short_scalars"
-        if( dist > nDistMax ):
-            nDistMax = dist;
-            nIdx = i;
-        #print( "dist:%s" % dist );
-
-    print( "DBG: findCircles: farest is: %d at %d,%d" % (nIdx, circles[nIdx][0],circles[nIdx][1]) );
-    ret.append( [ circles[nIdx][0], circles[nIdx][1] ] );
-    circles = np.delete(circles, nIdx,axis=0);
-    
     # find the two other (ordering the dot product seems to work, cool)
-    # NO IT DOESN'T !
-    
+    # NO IT DOESN'T !    
     #~ nIdx = -1;
     #~ nValMax = 0;
     #~ for i in range( len(circles) ):
@@ -193,36 +184,23 @@ def findCircles( img_color, cColor = 'r' ):
         #~ print( "val:%s" % val );
         #~ if( val > nValMax ):
             #~ nValMax = val;
-            #~ nIdx = i;
-            
-    print( "ret: %s" % ret );
-    print( "circles: %s" % circles );
-    tang1 = math.atan2( geometry.distance( ret[1], circles[0] ), geometry.distance( circles[0], ret[0] ) );
-    print( "tang1: %s" % tang1 );
-    tang2 = math.atan2( geometry.distance( ret[1], circles[1] ), geometry.distance( circles[1], ret[0] ) );
-    print( "tang2: %s" % tang2 );
-    
-    v1 = geometry.vect( ret[0], ret[1] );
-    #v2 = geometry.vect( ret[0], circles[1] );
-    v2 = geometry.vect( ret[0], circles[0] );
-    v3 = geometry.vect( ret[0], circles[1] );
-    val1 = geometry.angle( v1, v2 );
-    val2 = geometry.angle( v1, v3 );
-    print( "val1: %s" % val1 );
-    print( "val2: %s" % val2 );
+            #~ nIdx = i;    
     
     
-    # insert the new second one
-    ret.insert( 1, [ circles[nIdx][0], circles[nIdx][1] ] );
-    
-    # append the other one
-    #~ circles = np.delete(circles, nIdx,axis=0);
-    #~ if( len(circles)>0):
-        #~ ret.append( [ circles[0][0], circles[0][1] ] );
-    ret.append( [ circles[(nIdx+1)%2][0], circles[(nIdx+1)%2][1] ] );
-    
+    # return the other one in the right order (nearest, then nearest then ...)
+    for i in range(2):    
+        nIdx = geometry.find_nearest( ret[-1], circles );
+        #~ print( "DBG: findCircles: nearest is: %d at %d,%d" % (nIdx, circles[nIdx][0],circles[nIdx][1]) );
+        ret.append( [ circles[nIdx][0], circles[nIdx][1] ] );
+        circles = np.delete(circles, nIdx,axis=0);
+    ret.append( [ circles[0][0], circles[0][1] ] );
+        
     #~ ret.append( [ circles[nIdxColored][0], circles[nIdxColored][1] ] );
-    print( "DBG: findCircles: returning: %s" % str(ret) );
+    #~ print( "DBG: findCircles: returning: %s" % str(ret) );
+    
+    #~ center = geometry.center( ret[0], ret[2] );
+    #~ print( "a: %s" % geometry.angle( geometry.vect( center, ret[0] ), geometry.vect( center, ret[3] ) ) );
+    # TODO: en fait on aimerait toujours retourner les points dans le sens des aiguilles d'une montre (par exemple), or j'arrive pas a trouver la bonne formule !!!
     
     if( bRender ):
         for idx,circ in enumerate(ret):
@@ -267,10 +245,10 @@ def findCirclesPos( im, boardConfiguration, cColor = 'r' ):
     """
     compute the distance and orientation of the circles board
     - boardConfiguration: (w,h): the real distance in mm between each center
-    return: [x,y,z,t]
-        - x: side distance of the board center to the image center in image camera relative [-1,1]
-        - y: elevation distance [-1,1]
-        - d: distance between robot and circles (in m)
+    return: [x,y,d,t] or None
+        - x: side distance of the camera in mm (+ is to the left from the camera)
+        - y: elevation distance in mm (+ is to the top from the camera)
+        - d: distance between robot and circles (in mm)
         - rx: angle around the robot x angle in radians [0..2*pi]
     """
     circles = findCircles( im, cColor );
@@ -283,9 +261,9 @@ def findCirclesPos( im, boardConfiguration, cColor = 'r' ):
     #~ aCameraMatrix = camera.camera.aCameraMatrix[nResolution]
     #~ aDistorsionCoefs = camera.camera.distorsionCoef    
     a = np.array( [ +boardConfiguration[0]/2, +boardConfiguration[1]/2, 0 ] ); # the blue one
-    b = np.array( [ -boardConfiguration[0]/2, +boardConfiguration[1]/2, 0 ] );
+    b = np.array( [ +boardConfiguration[0]/2, -boardConfiguration[1]/2, 0 ] );
     c = np.array( [ -boardConfiguration[0]/2, -boardConfiguration[1]/2, 0 ] );
-    d = np.array( [ +boardConfiguration[0]/2, -boardConfiguration[1]/2, 0 ] );
+    d = np.array( [ -boardConfiguration[0]/2, +boardConfiguration[1]/2, 0 ] );
 
     aRealPts = np.array([a, b, c, d])
     
@@ -303,21 +281,23 @@ def findCirclesPos( im, boardConfiguration, cColor = 'r' ):
     aRotVector = retPnp[1];
     aTransVector = retPnp[2];
     
-    distX1 = circles[0][0] - circles[1][0];
-    distX2 = circles[3][0] - circles[2][0];
+    distX1 = circles[0][0] - circles[3][0];
+    distX2 = circles[1][0] - circles[2][0];
     distX = (distX1+distX2)/2
-    distY1 = circles[0][1] - circles[3][1];
-    distY2 = circles[1][1] - circles[2][1];
+    distY1 = circles[0][1] - circles[1][1];
+    distY2 = circles[3][1] - circles[2][1];
     distY = (distY1+distY2)/2
-    print( "distX1: %s, distX2: %s, avgX: %s, distY1: %s, distY2: %s, avgY: %s" % (distX1, distX2, distX, distY1, distY2, distY) );
+    avg = math.sqrt(distX*distX+distY*distY);
+    print( "distX1: %s, distX2: %s, avgX: %s, distY1: %s, distY2: %s, avgY: %s, avg: %s" % (distX1, distX2, distX, distY1, distY2, distY, avg) );
     
-    retVal = [0,0,0,0];
+    retVal = [aTransVector[0][0],aTransVector[1][0],aTransVector[2][0],aRotVector[2][0]];
     return retVal;
 # findCirclesPos - end    
 
 def autotest_findCirclesPos():
-    #files = ["wall_circles_qqvga_0m59", "wall_circles_qvga_0m59", "wall_circles_vga_0m59", "wall_circles_4vga_0m59", "wall_circles_vga_2m00", "wall_circles_vga_3m00" ];
-    files = ["wall_circles_4vga_0m59"]
+    files = ["wall_circles_qqvga_0m59", "wall_circles_qvga_0m59", "wall_circles_vga_0m59", "wall_circles_4vga_0m59", "wall_circles_vga_2m00", "wall_circles_vga_rot_2m00", "wall_circles_vga_trans_2m00",  "wall_circles_vga_3m00" ];
+    #~ files = ["wall_circles_4vga_0m59"]
+    #~ files = ["wall_circles_vga_rot_2m00"]
     theoricalResults = [0,0,0];
     for file in files:
         strFilename = "../data/circles_board/wall_circles/%s.png" % file;
@@ -325,6 +305,11 @@ def autotest_findCirclesPos():
         im = cv2.imread( strFilename );
         pos = findCirclesPos(im, WallCircleBoard().size(), WallCircleBoard().cColor );        
         print( "INF: autotest_findCirclesPos: pos: %s" % pos );
+        if( pos != None ):
+            rTheoricDistance = int(file[-4])*1000+int(file[-2:])*10;        
+            rCurrentDist = pos[2];
+            print( "rTheoricDistance: %f, mesured: %s" % ( rTheoricDistance, rCurrentDist ) )
+            print( "ratioDistance: %f" % (rTheoricDistance/rCurrentDist) );
     
 
 if __name__ == "__main__":
