@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 __author__ = 'lgeorge & amazel'
 
 import cv2
@@ -89,7 +91,7 @@ def drawArrow( image, p, q, color, nArrowMagnitude = 9, nThickness=1, nLineType=
     #Draw the second segment
     cv2.line(image, p, q, color, nThickness, nLineType, nShift);
 
-def findCircles( img_color, cColor = 'r' ):
+def findCircles( img_color, cColor = 'r', bDebug = False ):
     """
     find the circle in an image, 
     return the 4 positions [ [x1,y1], [x2,y2], [x3,y3], [x4,y4], ] in range[0..1]
@@ -98,10 +100,11 @@ def findCircles( img_color, cColor = 'r' ):
         - 'r': red circle with 3 other black/blue one .
         - 'b': blue circle with 3 other black
     """
+    if( bDebug ):
+        bRender = True;
+    else:
+        bRender = False;
     
-    bRender = 1;
-
-        
     img = cv2.cvtColor( img_color, cv2.cv.CV_BGR2GRAY );
 
     if( cColor == 'g' ):
@@ -127,7 +130,7 @@ def findCircles( img_color, cColor = 'r' ):
         p1 = 180; p2 = 35; r=8; R=60;
 
     if( cColor == 'b' ):
-        p1 = 100; p2 = 35; r=16; R=img.shape[1]/2;
+        p1 = 80; p2 = 35; r=16; R=img.shape[1]/2;
     
 
     # Apply the Hough Transform to find the circles
@@ -145,8 +148,9 @@ def findCircles( img_color, cColor = 'r' ):
     print( "nbr detected circles: %s" % len(circles) );
     #~ return circles;
     if( len(circles) != 4 ):
-        cv2.imshow( "circles", img_color );
-        cv2.waitKey(0)            
+        if( bRender ):
+            cv2.imshow( "circles", img_color );
+            cv2.waitKey(0)            
         return circles;
         
     # check all radius are equal:
@@ -241,7 +245,7 @@ class WallCircleBoard:
     def size( self ):
         return (self.w,self.h);
 
-def findCirclesPos( im, boardConfiguration, cColor = 'r' ):
+def findCirclesPos( im, boardConfiguration, cColor = 'r', bDebug = False ):
     """
     compute the distance and orientation of the circles board
     - boardConfiguration: (w,h): the real distance in mm between each center
@@ -251,7 +255,7 @@ def findCirclesPos( im, boardConfiguration, cColor = 'r' ):
         - d: distance between robot and circles (in mm)
         - rx: angle around the robot x angle in radians [0..2*pi]
     """
-    circles = findCircles( im, cColor );
+    circles = findCircles( im, cColor, bDebug = bDebug );
     print( "INF: findCirclesPos: circles: %s" % circles );
     
     if( len(circles) < 4 ):
@@ -290,11 +294,24 @@ def findCirclesPos( im, boardConfiguration, cColor = 'r' ):
     avg = math.sqrt(distX*distX+distY*distY);
     print( "distX1: %s, distX2: %s, avgX: %s, distY1: %s, distY2: %s, avgY: %s, avg: %s" % (distX1, distX2, distX, distY1, distY2, distY, avg) );
     
-    retVal = [aTransVector[0][0],aTransVector[1][0],aTransVector[2][0],aRotVector[2][0]];
+    retVal = [aTransVector[0][0],aTransVector[1][0],aTransVector[2][0]*1.09,aRotVector[2][0]];
     return retVal;
 # findCirclesPos - end    
 
+def oneShotTest_findCirclesPos():
+    strFilename = "/tmp/camera_viewer_0000_0.png";
+    im = cv2.imread( strFilename );
+    pos = findCirclesPos(im, WallCircleBoard().size(), WallCircleBoard().cColor, bDebug = True );        
+    print( "INF: autotest_findCirclesPos: pos: %s" % pos );
+#~ oneShotTest_findCirclesPos();
+#~ exit(0);
+
+
 def autotest_findCirclesPos():
+    # laser at 53cm (hors tout a 49cm d'un coté et 49.5 de l'autre):
+    # QQVGA: [[130, 94], [38, 92], [38, 32], [132, 34]]            
+    # QVGA: [[130, 94], [38, 92], [38, 32], [132, 34]]
+    # VGA: [[130, 94], [38, 92], [38, 32], [132, 34]]                
     files = ["wall_circles_qqvga_0m59", "wall_circles_qvga_0m59", "wall_circles_vga_0m59", "wall_circles_4vga_0m59", "wall_circles_vga_2m00", "wall_circles_vga_rot_2m00", "wall_circles_vga_trans_2m00",  "wall_circles_vga_3m00" ];
     #~ files = ["wall_circles_4vga_0m59"]
     #~ files = ["wall_circles_vga_rot_2m00"]
@@ -303,13 +320,15 @@ def autotest_findCirclesPos():
         strFilename = "../data/circles_board/wall_circles/%s.png" % file;
         print( "INF: testing on strFilename: %s" % strFilename );
         im = cv2.imread( strFilename );
-        pos = findCirclesPos(im, WallCircleBoard().size(), WallCircleBoard().cColor );        
+        pos = findCirclesPos(im, WallCircleBoard().size(), WallCircleBoard().cColor, bDebug = True  );        
         print( "INF: autotest_findCirclesPos: pos: %s" % pos );
         if( pos != None ):
             rTheoricDistance = int(file[-4])*1000+int(file[-2:])*10;        
             rCurrentDist = pos[2];
             print( "rTheoricDistance: %f, mesured: %s" % ( rTheoricDistance, rCurrentDist ) )
             print( "ratioDistance: %f" % (rTheoricDistance/rCurrentDist) );
+        else:
+            assert(0);
     
 
 if __name__ == "__main__":
