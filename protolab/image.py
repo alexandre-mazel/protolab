@@ -106,6 +106,8 @@ def findCircles( img_color, cColor = 'r' ):
 
     if( cColor != 'b' or img.shape[1] <= 160 ):
         img = cv2.GaussianBlur( img, (3, 3), 5 );
+        
+    #~ img = cv2.GaussianBlur( img, (15, 15), 0 );
     
     #~ img = cv2.pyrDown( img ); # PyrDown only divide by 2
     
@@ -118,7 +120,7 @@ def findCircles( img_color, cColor = 'r' ):
         p1 = 180; p2 = 35; r=8; R=60;
 
     if( cColor == 'b' ):
-        p1 = 110; p2 = 35; r=8; R=img.shape[1]/2;
+        p1 = 110; p2 = 35; r=16; R=img.shape[1]/2;
     
 
     # Apply the Hough Transform to find the circles
@@ -130,7 +132,7 @@ def findCircles( img_color, cColor = 'r' ):
     if( bRender ):
         # draw the outer circle
         for idx,circ in enumerate(circles):
-            cv2.circle(img_color,(circ[0],circ[1]),circ[2],(0,255,255*idx),2)    
+            cv2.circle(img_color,(circ[0],circ[1]),circ[2],(0,255,255),2)    
 
     print( "circles: %s" % circles );
     print( "nbr detected circles: %s" % len(circles) );
@@ -176,24 +178,48 @@ def findCircles( img_color, cColor = 'r' ):
             nDistMax = dist;
             nIdx = i;
         #print( "dist:%s" % dist );
-        
+
+    print( "DBG: findCircles: farest is: %d at %d,%d" % (nIdx, circles[nIdx][0],circles[nIdx][1]) );
     ret.append( [ circles[nIdx][0], circles[nIdx][1] ] );
     circles = np.delete(circles, nIdx,axis=0);
     
-    #find the two other (ordering the dot product seems to work, cool)
-    nIdx = -1;
-    nDistMax = 0;    
-    for i in range( len(circles) ):
-        val = np.dot( geometry.vect(ret[0],ret[1]), geometry.vect(ret[0],circles[i] ) );
+    # find the two other (ordering the dot product seems to work, cool)
+    # NO IT DOESN'T !
+    
+    #~ nIdx = -1;
+    #~ nValMax = 0;
+    #~ for i in range( len(circles) ):
+        #~ val = np.dot( geometry.vect(ret[0],ret[1]), geometry.vect(ret[0],circles[i] ) );
         #~ print( "val:%s" % val );
-        if( val > nDistMax ):
-            nDistMax = val;
-            nIdx = i;
+        #~ if( val > nValMax ):
+            #~ nValMax = val;
+            #~ nIdx = i;
             
+    print( "ret: %s" % ret );
+    print( "circles: %s" % circles );
+    tang1 = math.atan2( geometry.distance( ret[1], circles[0] ), geometry.distance( circles[0], ret[0] ) );
+    print( "tang1: %s" % tang1 );
+    tang2 = math.atan2( geometry.distance( ret[1], circles[1] ), geometry.distance( circles[1], ret[0] ) );
+    print( "tang2: %s" % tang2 );
+    
+    v1 = geometry.vect( ret[0], ret[1] );
+    #v2 = geometry.vect( ret[0], circles[1] );
+    v2 = geometry.vect( ret[0], circles[0] );
+    v3 = geometry.vect( ret[0], circles[1] );
+    val1 = geometry.angle( v1, v2 );
+    val2 = geometry.angle( v1, v3 );
+    print( "val1: %s" % val1 );
+    print( "val2: %s" % val2 );
+    
+    
+    # insert the new second one
     ret.insert( 1, [ circles[nIdx][0], circles[nIdx][1] ] );
-    circles = np.delete(circles, nIdx,axis=0);
-    if( len(circles)>0):
-        ret.append( [ circles[0][0], circles[0][1] ] );
+    
+    # append the other one
+    #~ circles = np.delete(circles, nIdx,axis=0);
+    #~ if( len(circles)>0):
+        #~ ret.append( [ circles[0][0], circles[0][1] ] );
+    ret.append( [ circles[(nIdx+1)%2][0], circles[(nIdx+1)%2][1] ] );
     
     #~ ret.append( [ circles[nIdxColored][0], circles[nIdxColored][1] ] );
     print( "DBG: findCircles: returning: %s" % str(ret) );
@@ -204,7 +230,8 @@ def findCircles( img_color, cColor = 'r' ):
             cv2.circle(img_color,(circ[0],circ[1]),10,(0,255,255*idx),2)    
             if( idx < 2 ):
                 # draw the center of the circle
-                cv2.circle( img_color,(circ[0],circ[1]),2,(255,0,255),3)
+                cv2.circle( img_color,(circ[0],circ[1]),2,(255,0,255),3)                
+            cv2.putText( img_color, str(idx+1), (circ[0]+12,circ[1]+12), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0) );
                 
         cv2.imshow( "circles", img_color );
         cv2.waitKey(0)                
@@ -276,12 +303,21 @@ def findCirclesPos( im, boardConfiguration, cColor = 'r' ):
     aRotVector = retPnp[1];
     aTransVector = retPnp[2];
     
+    distX1 = circles[0][0] - circles[1][0];
+    distX2 = circles[3][0] - circles[2][0];
+    distX = (distX1+distX2)/2
+    distY1 = circles[0][1] - circles[3][1];
+    distY2 = circles[1][1] - circles[2][1];
+    distY = (distY1+distY2)/2
+    print( "distX1: %s, distX2: %s, avgX: %s, distY1: %s, distY2: %s, avgY: %s" % (distX1, distX2, distX, distY1, distY2, distY) );
+    
     retVal = [0,0,0,0];
     return retVal;
 # findCirclesPos - end    
 
 def autotest_findCirclesPos():
-    files = ["wall_circles_qqvga_0m59", "wall_circles_qvga_0m59", "wall_circles_vga_0m59", "wall_circles_4vga_0m59", "wall_circles_vga_2m00", "wall_circles_vga_3m00" ];
+    #files = ["wall_circles_qqvga_0m59", "wall_circles_qvga_0m59", "wall_circles_vga_0m59", "wall_circles_4vga_0m59", "wall_circles_vga_2m00", "wall_circles_vga_3m00" ];
+    files = ["wall_circles_4vga_0m59"]
     theoricalResults = [0,0,0];
     for file in files:
         strFilename = "../data/circles_board/wall_circles/%s.png" % file;
