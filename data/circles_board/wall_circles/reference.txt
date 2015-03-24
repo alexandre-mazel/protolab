@@ -1,4 +1,9 @@
 Pepper positionné avec:
-laser at 53cm (hors tout a 49cm d'un coté et 49.5 de l'autre):
+
+laser at 53cm 
+<=>
+hors tout:avant des bumpers a 49cm d'un coté et 49.5 de l'autre
+<=>
+camera at 59cm
 
 Le wall fait cf protolab/image.py class WallCircleBoard

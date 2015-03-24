@@ -98,6 +98,9 @@ def findCircles( img_color, cColor = 'r' ):
         - 'r': red circle with 3 other black/blue one .
         - 'b': blue circle with 3 other black
     """
+    
+    bRender = 1;
+
         
     img = cv2.cvtColor( img_color, cv2.cv.CV_BGR2GRAY );
 
@@ -115,20 +118,34 @@ def findCircles( img_color, cColor = 'r' ):
         p1 = 180; p2 = 35; r=8; R=60;
 
     if( cColor == 'b' ):
-        p1 = 180; p2 = 35; r=8; R=img.shape[1]/2;
+        p1 = 110; p2 = 35; r=8; R=img.shape[1]/2;
     
 
     # Apply the Hough Transform to find the circles
-    circles = cv2.HoughCircles( img, cv2.cv.CV_HOUGH_GRADIENT,dp=1, minDist = img.shape[0]/16, param1=p1,param2=p2,minRadius=r,maxRadius=R );
-    if( circles == None ):
+    circles_detected = cv2.HoughCircles( img, cv2.cv.CV_HOUGH_GRADIENT,dp=1, minDist = img.shape[0]/16, param1=p1,param2=p2,minRadius=r,maxRadius=R );
+    print( "circles_detected: %s" % circles_detected );  # a list of x,y,radius    
+    if( circles_detected == None ):
         return [];
-    circles = np.int16(np.around(circles))[0] # round the list and remove one level
-    #~ print circles  # a list of x,y,radius    
+    circles = np.int16(np.around(circles_detected))[0] # round the list and remove one level
+    if( bRender ):
+        # draw the outer circle
+        for idx,circ in enumerate(circles):
+            cv2.circle(img_color,(circ[0],circ[1]),circ[2],(0,255,255*idx),2)    
+
+    print( "circles: %s" % circles );
     print( "nbr detected circles: %s" % len(circles) );
     #~ return circles;
     if( len(circles) != 4 ):
-        return circles
+        return circles;
+        
+    # check all radius are equal:
+    rRadius = circles[0][2];
+    for circle in circles[1:]:
+        if(1-(rRadius/float(circle[2])) > 0.2 ):
+            print( "WRN:findCircles: mismatch radius: %s !~= %s" % ( rRadius, circle[2] ) );
+            return [];
     
+        
     # search for the red one:
     colorFunc = reddish;
     if( cColor == 'b' ):
@@ -180,6 +197,18 @@ def findCircles( img_color, cColor = 'r' ):
     
     #~ ret.append( [ circles[nIdxColored][0], circles[nIdxColored][1] ] );
     print( "DBG: findCircles: returning: %s" % str(ret) );
+    
+    if( bRender ):
+        for idx,circ in enumerate(ret):
+            # draw the outer circle
+            cv2.circle(img_color,(circ[0],circ[1]),10,(0,255,255*idx),2)    
+            if( idx < 2 ):
+                # draw the center of the circle
+                cv2.circle( img_color,(circ[0],circ[1]),2,(255,0,255),3)
+                
+        cv2.imshow( "circles", img_color );
+        cv2.waitKey(0)                
+        
     return ret;
 # findCircles - end
 
@@ -252,13 +281,13 @@ def findCirclesPos( im, boardConfiguration, cColor = 'r' ):
 # findCirclesPos - end    
 
 def autotest_findCirclesPos():
-    files = ["wall_circles_qqvga", "wall_circles_qvga", "wall_circles_vga", "wall_circles_4vga" ];
+    files = ["wall_circles_qqvga_0m59", "wall_circles_qvga_0m59", "wall_circles_vga_0m59", "wall_circles_4vga_0m59", "wall_circles_vga_2m00", "wall_circles_vga_3m00" ];
     theoricalResults = [0,0,0];
     for file in files:
         strFilename = "../data/circles_board/wall_circles/%s.png" % file;
         print( "INF: testing on strFilename: %s" % strFilename );
         im = cv2.imread( strFilename );
-        pos = findCirclesPos(im, WallCircleBoard().size(), WallCircleBoard().cColor );
+        pos = findCirclesPos(im, WallCircleBoard().size(), WallCircleBoard().cColor );        
         print( "INF: autotest_findCirclesPos: pos: %s" % pos );
     
 
