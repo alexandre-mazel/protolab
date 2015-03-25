@@ -7,3 +7,5 @@ hors tout:avant des bumpers a 49cm d'un coté et 49.5 de l'autre
 camera at 59cm
 
 Le wall fait cf protolab/image.py class WallCircleBoard
+
+Cependant selon la posture de Pepper, des fois la camera est pile au dessus du laser!

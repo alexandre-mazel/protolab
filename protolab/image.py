@@ -135,7 +135,7 @@ def findCircles( img_color, cColor = 'r', bDebug = False ):
 
     # Apply the Hough Transform to find the circles
     circles_detected = cv2.HoughCircles( img, cv2.cv.CV_HOUGH_GRADIENT,dp=1, minDist = img.shape[0]/16, param1=p1,param2=p2,minRadius=r,maxRadius=R );
-    #~ print( "circles_detected: %s" % circles_detected );  # a list of x,y,radius    
+    print( "circles_detected: %s" % circles_detected );  # a list of x,y,radius    
     if( circles_detected == None ):
         return [];
     circles = np.int16(np.around(circles_detected))[0] # round the list and remove one level
@@ -156,7 +156,8 @@ def findCircles( img_color, cColor = 'r', bDebug = False ):
     # check all radius are equal:
     rRadius = circles[0][2];
     for circle in circles[1:]:
-        if(1-(rRadius/float(circle[2])) > 0.2 ):
+        rRatio = rRadius/float(circle[2]);
+        if( abs(1.-rRatio) > 0.2 ):
             print( "WRN:findCircles: mismatch radius: %s !~= %s" % ( rRadius, circle[2] ) );
             return [];
     
@@ -249,16 +250,17 @@ def findCirclesPos( im, boardConfiguration, cColor = 'r', bDebug = False ):
     """
     compute the distance and orientation of the circles board
     - boardConfiguration: (w,h): the real distance in mm between each center
-    return: [x,y,d,t] or None
+    return: [x,y,d,rx,rz] or None
         - x: side distance of the camera in mm (+ is to the left from the camera)
         - y: elevation distance in mm (+ is to the top from the camera)
         - d: distance between robot and circles (in mm)
         - rx: angle around the robot x angle in radians [0..2*pi]
+        - rz: angle around the robot z angle in radians [0..2*pi]
     """
     circles = findCircles( im, cColor, bDebug = bDebug );
     print( "INF: findCirclesPos: circles: %s" % circles );
     
-    if( len(circles) < 4 ):
+    if( len(circles) != 4 ):
         return None;
     #avgx = circles[0][0] - circles[0][0];
     
@@ -294,7 +296,9 @@ def findCirclesPos( im, boardConfiguration, cColor = 'r', bDebug = False ):
     avg = math.sqrt(distX*distX+distY*distY);
     print( "distX1: %s, distX2: %s, avgX: %s, distY1: %s, distY2: %s, avgY: %s, avg: %s" % (distX1, distX2, distX, distY1, distY2, distY, avg) );
     
-    retVal = [aTransVector[0][0],aTransVector[1][0],aTransVector[2][0]*1.09,aRotVector[2][0]];
+    # ratio to correct reality (for the moment we use matrix from nao, pouah!)
+    rRatioCorrect = 1.075;
+    retVal = [aTransVector[0][0],aTransVector[1][0],aTransVector[2][0]*rRatioCorrect,aRotVector[2][0],aRotVector[1][0]];
     return retVal;
 # findCirclesPos - end    
 
