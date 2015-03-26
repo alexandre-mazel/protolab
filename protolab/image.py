@@ -144,13 +144,15 @@ def findCircles( img_color, cColor = 'r', bDebug = False, bFindSmall = False ):
 
     # Apply the Hough Transform to find the circles
     circles_detected = cv2.HoughCircles( img, cv2.cv.CV_HOUGH_GRADIENT,dp=1, minDist = minDist, param1=p1,param2=p2,minRadius=r,maxRadius=R );
-    print( "circles_detected: %s" % circles_detected );  # a list of x,y,radius    
+    if( bDebug ):
+        print( "circles_detected: %s" % circles_detected );  # a list of x,y,radius    
     nNbrCircles = 0;
     
     if( circles_detected != None ):
         nNbrCircles = len(circles_detected[0]);
-        
-    print( "nbr detected circles: %s" % nNbrCircles );
+    
+    if( bDebug ):
+        print( "nbr detected circles: %s" % nNbrCircles );
     
     if( nNbrCircles > 0 ):
         circles = np.int16(np.around(circles_detected))[0] # round the list and remove one level
@@ -277,7 +279,8 @@ def findCirclesPos( im, boardConfiguration, cColor = 'r', bDebug = False ):
         - rz: angle around the robot z angle in radians [0..2*pi]
     """
     circles = findCircles( im, cColor, bDebug = bDebug );
-    print( "INF: findCirclesPos: circles: %s" % circles );
+    if( bDebug ):
+        print( "INF: findCirclesPos: circles: %s" % circles );
     
     if( len(circles) != 4 ):
         return None;
@@ -301,7 +304,8 @@ def findCirclesPos( im, boardConfiguration, cColor = 'r', bDebug = False ):
     cameraMatrix = StdCamera().getCameraMatrix(im.shape[1]);
     distCoeffs = StdCamera().getDistorsionCoef();
     retPnp = cv2.solvePnP( aRealPts, aImPts, cameraMatrix, distCoeffs );
-    print( "DBG: findCirclesPos: retPnp: %s" % str(retPnp) );    
+    if( bDebug ):
+        print( "DBG: findCirclesPos: retPnp: %s" % str(retPnp) );    
     bSuccess = retPnp[0];
     aRotVector = retPnp[1];
     aTransVector = retPnp[2];
@@ -313,7 +317,7 @@ def findCirclesPos( im, boardConfiguration, cColor = 'r', bDebug = False ):
     distY2 = circles[3][1] - circles[2][1];
     distY = (distY1+distY2)/2
     avg = math.sqrt(distX*distX+distY*distY);
-    print( "distX1: %s, distX2: %s, avgX: %s, distY1: %s, distY2: %s, avgY: %s, avg: %s" % (distX1, distX2, distX, distY1, distY2, distY, avg) );
+    #~ print( "distX1: %s, distX2: %s, avgX: %s, distY1: %s, distY2: %s, avgY: %s, avg: %s" % (distX1, distX2, distX, distY1, distY2, distY, avg) );
     
     # ratio to correct reality (for the moment we use matrix from nao, pouah!)
     rRatioCorrect = 1.075;
