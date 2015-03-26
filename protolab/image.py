@@ -91,7 +91,7 @@ def drawArrow( image, p, q, color, nArrowMagnitude = 9, nThickness=1, nLineType=
     #Draw the second segment
     cv2.line(image, p, q, color, nThickness, nLineType, nShift);
 
-def findCircles( img_color, cColor = 'r', bDebug = False ):
+def findCircles( img_color, cColor = 'r', bDebug = False, bFindSmall = False ):
     """
     find the circle in an image, 
     return the 4 positions [ [x1,y1], [x2,y2], [x3,y3], [x4,y4], ] in range[0..1]
@@ -106,7 +106,7 @@ def findCircles( img_color, cColor = 'r', bDebug = False ):
         bRender = False;
     
     img = cv2.cvtColor( img_color, cv2.cv.CV_BGR2GRAY );
-
+    
     if( cColor == 'g' ):
         img = cv2.GaussianBlur( img, (3, 3), 5 );
     else:
@@ -118,11 +118,13 @@ def findCircles( img_color, cColor = 'r', bDebug = False ):
             img = cv2.GaussianBlur( img, (7, 7), 5 ); # TODO: tune me!
         elif( img.shape[1] <= 1280 ):
             img = cv2.GaussianBlur( img, (15, 15), 10 );
-    
+            
     #~ img = cv2.pyrDown( img ); # PyrDown only divide by 2
     
     #~ cv2.imshow( "mat", img );
     #~ cv2.waitKey(0)
+
+    minDist = img.shape[0]/16
     
     if( img.shape[1] == 320 ):
         p1 = 10; p2 = 20; r=5; R=10;
@@ -130,13 +132,23 @@ def findCircles( img_color, cColor = 'r', bDebug = False ):
         p1 = 180; p2 = 35; r=8; R=60;
 
     if( cColor == 'b' ):
-        p1 = 80; p2 = 35; r=16; R=img.shape[1]/2;
+        p1 = 85; p2 = 35; r=16; R=img.shape[1]/2; # works with 85-125 on auto test
+        
+    if( bFindSmall ):
+        r = 10;
+        R = 3*r;
+        minDist = 4;
+        
+        
     
 
     # Apply the Hough Transform to find the circles
-    circles_detected = cv2.HoughCircles( img, cv2.cv.CV_HOUGH_GRADIENT,dp=1, minDist = img.shape[0]/16, param1=p1,param2=p2,minRadius=r,maxRadius=R );
+    circles_detected = cv2.HoughCircles( img, cv2.cv.CV_HOUGH_GRADIENT,dp=1, minDist = minDist, param1=p1,param2=p2,minRadius=r,maxRadius=R );
     print( "circles_detected: %s" % circles_detected );  # a list of x,y,radius    
     if( circles_detected == None ):
+        if( not bFindSmall ):
+            print( "INF: findCircles: find no circles, trying to find some small one..." );
+            return findCircles( img_color, cColor = cColor, bDebug = bDebug, bFindSmall = True );
         return [];
     circles = np.int16(np.around(circles_detected))[0] # round the list and remove one level
     if( bRender ):
@@ -322,22 +334,24 @@ def autotest_findCirclesPos():
     files = ["wall_circles_qqvga_0m59", "wall_circles_qvga_0m59", "wall_circles_vga_0m59", "wall_circles_4vga_0m59", "wall_circles_vga_2m00", "wall_circles_vga_rot_2m00", "wall_circles_vga_trans_2m00",  "wall_circles_vga_3m00", "wall_circles_vga_5m00" ];
     #~ files = ["wall_circles_4vga_0m59"]
     #~ files = ["wall_circles_vga_rot_2m00"]
-    files = ["wall_circles_vga_5m00"]
+    #~ files = ["wall_circles_vga_5m00","wall_circles_vga_5m00_flashy"]
     theoricalResults = [0,0,0];
+    nNbrSuccess = 0;
     for file in files:
         strFilename = "../data/circles_board/wall_circles/%s.png" % file;
         print( "INF: testing on strFilename: %s" % strFilename );
         im = cv2.imread( strFilename );
-        pos = findCirclesPos(im, WallCircleBoard().size(), WallCircleBoard().cColor, bDebug = True  );        
+        pos = findCirclesPos(im, WallCircleBoard().size(), WallCircleBoard().cColor, bDebug = 0 );        
         print( "INF: autotest_findCirclesPos: pos: %s" % pos );
         if( pos != None ):
             rTheoricDistance = int(file[-4])*1000+int(file[-2:])*10;        
             rCurrentDist = pos[2];
             print( "rTheoricDistance: %f, mesured: %s" % ( rTheoricDistance, rCurrentDist ) )
             print( "ratioDistance: %f" % (rTheoricDistance/rCurrentDist) );
-        else:
-            assert(0);
-    
+            nNbrSuccess += 1;
+    print( "nNbrSuccess: %d" % nNbrSuccess );
+    assert( nNbrSuccess == len(files) );
+    print( "GOOD: Test passed !" );
 
 if __name__ == "__main__":
     autotest_findCirclesPos();
