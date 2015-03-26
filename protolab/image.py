@@ -93,7 +93,7 @@ def drawArrow( image, p, q, color, nArrowMagnitude = 9, nThickness=1, nLineType=
 
 def findCircles( img_color, cColor = 'r', bDebug = False, bFindSmall = False ):
     """
-    find the circle in an image, 
+    find the 4 circles in an image, 
     return the 4 positions [ [x1,y1], [x2,y2], [x3,y3], [x4,y4], ] in range[0..1]
     the first will be the red one, following point will always be in the same order
     - cColor: the first letter of the first color
@@ -145,25 +145,29 @@ def findCircles( img_color, cColor = 'r', bDebug = False, bFindSmall = False ):
     # Apply the Hough Transform to find the circles
     circles_detected = cv2.HoughCircles( img, cv2.cv.CV_HOUGH_GRADIENT,dp=1, minDist = minDist, param1=p1,param2=p2,minRadius=r,maxRadius=R );
     print( "circles_detected: %s" % circles_detected );  # a list of x,y,radius    
-    if( circles_detected == None ):
-        if( not bFindSmall ):
-            print( "INF: findCircles: find no circles, trying to find some small one..." );
-            return findCircles( img_color, cColor = cColor, bDebug = bDebug, bFindSmall = True );
-        return [];
-    circles = np.int16(np.around(circles_detected))[0] # round the list and remove one level
-    if( bRender ):
+    nNbrCircles = 0;
+    
+    if( circles_detected != None ):
+        nNbrCircles = len(circles_detected[0]);
+        
+    print( "nbr detected circles: %s" % nNbrCircles );
+    
+    if( nNbrCircles > 0 ):
+        circles = np.int16(np.around(circles_detected))[0] # round the list and remove one level
+    
+    if( bRender and nNbrCircles > 0 ):
         # draw the outer circle
         for idx,circ in enumerate(circles):
-            cv2.circle(img_color,(circ[0],circ[1]),circ[2],(0,255,255),2)    
-
-    #~ print( "circles: %s" % circles );
-    print( "nbr detected circles: %s" % len(circles) );
-    #~ return circles;
-    if( len(circles) != 4 ):
+            cv2.circle( img_color, (circ[0],circ[1]),circ[2], (0,255,255), 2 );
+        
+    if( nNbrCircles != 4 ):
         if( bRender ):
             cv2.imshow( "circles", img_color );
-            cv2.waitKey(0)            
-        return circles;
+            cv2.waitKey(0);        
+        if( not bFindSmall ):
+            print( "INF: findCircles: find not enough circles, trying to find some smaller one..." );
+            return findCircles( img_color, cColor = cColor, bDebug = bDebug, bFindSmall = True );
+        return [];
         
     # check all radius are equal:
     rRadius = circles[0][2];
@@ -331,17 +335,18 @@ def autotest_findCirclesPos():
     # QQVGA: [[130, 94], [38, 92], [38, 32], [132, 34]]            
     # QVGA: [[130, 94], [38, 92], [38, 32], [132, 34]]
     # VGA: [[130, 94], [38, 92], [38, 32], [132, 34]]                
-    files = ["wall_circles_qqvga_0m59", "wall_circles_qvga_0m59", "wall_circles_vga_0m59", "wall_circles_4vga_0m59", "wall_circles_vga_2m00", "wall_circles_vga_rot_2m00", "wall_circles_vga_trans_2m00",  "wall_circles_vga_3m00", "wall_circles_vga_5m00" ];
+    files = ["wall_circles_qqvga_0m59", "wall_circles_qvga_0m59", "wall_circles_vga_0m59", "wall_circles_4vga_0m59", "wall_circles_vga_2m00", "wall_circles_vga_rot_2m00", "wall_circles_vga_trans_2m00",  "wall_circles_vga_3m00", "wall_circles_vga_5m00","wall_circles_vga_3m54" ];
     #~ files = ["wall_circles_4vga_0m59"]
     #~ files = ["wall_circles_vga_rot_2m00"]
     #~ files = ["wall_circles_vga_5m00","wall_circles_vga_5m00_flashy"]
+    #~ files = ["wall_circles_vga_3m54"]
     theoricalResults = [0,0,0];
     nNbrSuccess = 0;
     for file in files:
         strFilename = "../data/circles_board/wall_circles/%s.png" % file;
-        print( "INF: testing on strFilename: %s" % strFilename );
+        print( "\nINF: testing on strFilename: %s" % strFilename );
         im = cv2.imread( strFilename );
-        pos = findCirclesPos(im, WallCircleBoard().size(), WallCircleBoard().cColor, bDebug = 0 );        
+        pos = findCirclesPos(im, WallCircleBoard().size(), WallCircleBoard().cColor, bDebug = 1 );        
         print( "INF: autotest_findCirclesPos: pos: %s" % pos );
         if( pos != None ):
             rTheoricDistance = int(file[-4])*1000+int(file[-2:])*10;        
