@@ -114,7 +114,7 @@ def findCircles( img_color, cColor = 'r', bDebug = False ):
             img = cv2.GaussianBlur( img, (3, 3), 5 );
         elif( img.shape[1] <= 320 ):
             img = cv2.GaussianBlur( img, (5, 5), 5 ); # TODO: tune me!
-        elif( img.shape[1] <= 320 ):
+        elif( img.shape[1] <= 640 ):
             img = cv2.GaussianBlur( img, (7, 7), 5 ); # TODO: tune me!
         elif( img.shape[1] <= 1280 ):
             img = cv2.GaussianBlur( img, (15, 15), 10 );
@@ -159,6 +159,9 @@ def findCircles( img_color, cColor = 'r', bDebug = False ):
         rRatio = rRadius/float(circle[2]);
         if( abs(1.-rRatio) > 0.2 ):
             print( "WRN:findCircles: mismatch radius: %s !~= %s" % ( rRadius, circle[2] ) );
+            if( bRender ):
+                cv2.imshow( "circles", img_color );
+                cv2.waitKey(0)             
             return [];
     
         
@@ -316,9 +319,10 @@ def autotest_findCirclesPos():
     # QQVGA: [[130, 94], [38, 92], [38, 32], [132, 34]]            
     # QVGA: [[130, 94], [38, 92], [38, 32], [132, 34]]
     # VGA: [[130, 94], [38, 92], [38, 32], [132, 34]]                
-    files = ["wall_circles_qqvga_0m59", "wall_circles_qvga_0m59", "wall_circles_vga_0m59", "wall_circles_4vga_0m59", "wall_circles_vga_2m00", "wall_circles_vga_rot_2m00", "wall_circles_vga_trans_2m00",  "wall_circles_vga_3m00" ];
+    files = ["wall_circles_qqvga_0m59", "wall_circles_qvga_0m59", "wall_circles_vga_0m59", "wall_circles_4vga_0m59", "wall_circles_vga_2m00", "wall_circles_vga_rot_2m00", "wall_circles_vga_trans_2m00",  "wall_circles_vga_3m00", "wall_circles_vga_5m00" ];
     #~ files = ["wall_circles_4vga_0m59"]
     #~ files = ["wall_circles_vga_rot_2m00"]
+    files = ["wall_circles_vga_5m00"]
     theoricalResults = [0,0,0];
     for file in files:
         strFilename = "../data/circles_board/wall_circles/%s.png" % file;
