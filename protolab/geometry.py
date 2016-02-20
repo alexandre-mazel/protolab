@@ -4,12 +4,43 @@ def vect( pt1,pt2):
     return [pt2[0]-pt1[0],pt2[1]-pt1[1]]
     
 def median( pt1,pt2):
-    return ( (pt2[0]+pt1[0])/2, (pt2[1]+pt1[1])/2);
+    return [ (pt2[0]+pt1[0])/2, (pt2[1]+pt1[1])/2 ];
+    
+def compute_shape_median( pts ):
+    """
+    compute the median of a shape (the mean)
+    """
+    ptsum = [0,0]
+    for pt in pts:
+        ptsum[0] += pt[0]
+        ptsum[1] += pt[1]
+    ptsum[0] /= len(pts)
+    ptsum[1] /= len(pts)
+    return ptsum
     
 def squared_distance(pt1,pt2):
     #~ print( "DBG: squared_distance: pt1: %s" % str(pt1) );
     #~ print( "DBG: squared_distance: pt2: %s" % str(pt2) );
-    return (pt2[0]-pt1[0])*(pt2[0]-pt1[0]) + (pt2[1]-pt1[1])*(pt2[1]-pt1[1]);    
+    return (pt2[0]-pt1[0])*(pt2[0]-pt1[0]) + (pt2[1]-pt1[1])*(pt2[1]-pt1[1]);
+    
+    
+def computeBoudingBox( pts ):
+    """
+    return the bounding box [topleft, bottomright] of a list of pts (returned points could be absent from pts)
+    """
+    topleft = pts[0][:]
+    bottomright = pts[0][:]
+    for pt in pts[1:]:
+        if( pt[0] < topleft[0] ):
+            topleft[0] = pt[0]
+        elif( pt[0] > bottomright[0] ):
+            bottomright[0] = pt[0]
+        if( pt[1] < topleft[1] ):
+            topleft[1] = pt[1]
+        elif( pt[1] > bottomright[1] ):
+            bottomright[1] = pt[1]
+    return [topleft, bottomright]
+    
 
 def distance(pt1,pt2):
     #~ print( "DBG: distance: pt1: %s" % str(pt1) );
@@ -36,6 +67,15 @@ def find_nearest( pt, v ):
             nIdx = i;
     return nIdx;
     
+def compute_distance_to_points( shape, pts ):
+    """
+    return the sum of the distance between each pt in pts and the nearest point in the shape
+    """
+    rDist = 0
+    for pt in pts:
+        idxNear = find_nearest( pt, shape )
+        rDist += distance( shape[idxNear], pt )
+    return rDist
 
 def angle( v1, v2 ):
     """
@@ -44,6 +84,11 @@ def angle( v1, v2 ):
     
     return math.acos( (float(v1[0]) * v2[0] + float(v1[1]) * v2[1]) / ( math.sqrt( float(v1[0])*v1[0] + float(v1[1])*v1[1]) * math.sqrt(float(v2[0])*v2[0] + float(v2[1])*v2[1]) ) )        
     # TODO: use atan2() !!!
+    
+def translate_shape( pts, dir ):
+    for pt in pts:
+        pt[0] += dir[0]
+        pt[1] += dir[1]
 
 
 def _checkFloat( val, value ):
