@@ -6,6 +6,14 @@ def vect( pt1,pt2):
 def median( pt1,pt2):
     return [ (pt2[0]+pt1[0])/2, (pt2[1]+pt1[1])/2 ];
     
+def add( pt, nIncrease ):
+    """
+    add a constant to a shape
+    """
+    for i in range(len(pt)):
+        pt[i] += nIncrease
+    return pt
+    
 def compute_shape_median( pts ):
     """
     compute the median of a shape (the mean)
@@ -67,7 +75,7 @@ def find_nearest( pt, v ):
             nIdx = i;
     return nIdx;
     
-def compute_distance_to_points( shape, pts ):
+def compute_distance_shape_to_points( shape, pts ):
     """
     return the sum of the distance between each pt in pts and the nearest point in the shape
     """
@@ -76,6 +84,10 @@ def compute_distance_to_points( shape, pts ):
         idxNear = find_nearest( pt, shape )
         rDist += distance( shape[idxNear], pt )
     return rDist
+    
+def compute_distance_rect_to_point( recttopleft, rectbottomright, pt ):
+    return 421 # todo!
+
 
 def angle( v1, v2 ):
     """
