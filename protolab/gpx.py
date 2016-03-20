@@ -308,6 +308,7 @@ class Gpx:
         for i in range(4):
             if( len(self.listPts) > i ):
                 strOut += "- pt%d:\n%s\n" % (i,str(self.listPts[i]));
+        strOut += "- pt-1:\n%s\n" % (str(self.listPts[-1]));
         return strOut;
         
     def nodeToStr( self, node ):
@@ -494,9 +495,12 @@ def generateWeek( strMondayDate ):
     - strMondayDate: monday date well formated eg: "2015-03-19"
     """
     nNbrSecPerDay = 60*60*24;
+    nWinterToSummer = 0;
+    #~ nWinterToSummer = -2*60*60; # enable this when ref is in winter and week in summer
     for strRefName in ["2015_03_19__Morning_Ride_ref","2015_03_19__Evening_Ride_ref"]:    
         strName = "candi-issy";
-        if( "Evening" in strRefName ):
+        bEvening = "Evening" in strRefName;
+        if( bEvening ):
             strName = "issy-candi";
         gpx = Gpx();
         gpx.read( "../data/gpx/%s.gpx" % strRefName );        
@@ -516,7 +520,11 @@ def generateWeek( strMondayDate ):
             gpxNew.copy( gpx );
             gpxNew.changeCreator();
             gpxNew.changeName( strName );
-            gpxNew.modifyDate( (nNbrDiffDay+i) * nNbrSecPerDay );
+            if( i == 1 and bEvening ):
+                nOffset = -60*60*2; # le mardi je pars 2h plus tot...            
+            else:
+                nOffset = 0;
+            gpxNew.modifyDate( (nNbrDiffDay+i) * nNbrSecPerDay+nOffset+random.random()*600 + nWinterToSummer );
             gpxNew.modifySpeed( 0.9+random.random()*0.21)
             print( gpx );
             print( gpxNew );
@@ -527,8 +535,53 @@ def generateWeek( strMondayDate ):
             
                 
 
+def duplicateOne( strRefFile, strDay, nTimeOffset = 0, strName = "" ):
+    """
+    Take a reference run, and replay it another day, with an optionnal time offset (time in the day)
+    """
+    nNbrSecPerDay = 60*60*24;
+    nWinterToSummer = 0;
+    nWinterToSummer = -1*60*60; # enable this when ref is in winter and week in summer
+    
+    gpx = Gpx();
+    gpx.read( strRefFile );
+    gpxNew = Gpx();
+    gpxNew.copy( gpx );
+    gpxNew.changeCreator();
+    if( strName != "" ):
+        gpxNew.changeName(strName);
         
+    dt = datetime.datetime.strptime( strDay, "%Y-%m-%d");
+    tDay = time.mktime(dt.timetuple()) + dt.microsecond / 1E6 # using utctimetuple or just timetuple
+    nNbrDiffDay = 0;
+    nNbrDiffDay = int( ( tDay - gpx.time ) /nNbrSecPerDay );
+    nNbrDiffDay += 1; # for partial day
+    gpxNew.modifyDate( nNbrDiffDay * nNbrSecPerDay+nWinterToSummer+nTimeOffset );
+        
+    
 
+    print( gpx );
+    print( gpxNew );
+    
+    strNewName = gpxNew.write( "/tmp/" );
+# duplicateOne - end
+
+def accelerateOne( strRefFile, rDurationRatio ):
+    """
+    Take a reference run, change the speed then save it
+    """
+    gpx = Gpx();
+    gpx.read( strRefFile );
+    gpxNew = Gpx();
+    gpxNew.copy( gpx );
+    gpxNew.changeCreator();
+    gpxNew.modifySpeed( rDurationRatio );
+
+    print( gpx );
+    print( gpxNew );
+    
+    strNewName = gpxNew.write( "/tmp/" );
+# duplicateOne - end
     
     
         
@@ -554,5 +607,9 @@ def autoTest():
     
 if __name__ == "__main__":
     #autoTest();
-    #generateWeek( "2015-03-16" );
-    generateWeek( "2015-03-02" );
+    #generateWeek( "2015-03-16" );\
+    generateWeek( "2015-11-30" );
+    #~ duplicateOne( "../data/gpx/2015_01_21__Afternoon Ride aldeb-chateau_ref.gpx", "2015-04-02", 4*60*60+20*60, "Aldeb-Paris" );
+    #~ duplicateOne( "../data/gpx/2015_01_21__Afternoon Ride chateau-candi_ref.gpx", "2015-04-02", 8*60*60, "RetourDodo" );
+    #~ accelerateOne( "/tmp/a.gpx", 0.9 );
+    
