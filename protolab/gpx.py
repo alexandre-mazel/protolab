@@ -1,9 +1,28 @@
+# -*- coding: utf-8 -*-
+
+#
+# Handle gpx file (modify, visualize...)
+# (c) 2016 A.Mazel
+#
+
 import copy
 import datetime
 import random
 import time
 import xml.dom.minidom # for xml parsing
 
+def long2km( rLong ):
+    """
+    convert a longitude to a km (from the 0,0 of the earth)
+    """
+    return rLong*30000/360
+
+def lat2km( rLat ):
+    """
+    convert a latitude to a km (from the 0,0 of the earth)
+    """
+    return rLat*25000/360
+    
 def floatToStrComplete( f, nLimitToNbrDecimal = -1 ):
     """
     return the minimal string complete representation with at least 1 digit after the "."
@@ -443,6 +462,18 @@ class Gpx:
         self.listPts = newPts;
     # modifySpeed - end
     
+    def computeDistance( self ):
+        import geometry
+        rDist = 0
+        for i in range( 1, len(self.listPts) ):
+            #~ dla = self.listPts[i].la - self.listPts[i-1].la
+            #~ dlo = self.listPts[i].lo - self.listPts[i-1].lo
+            #~ dla = lat2km( dla )
+            #~ dlo = lat2km( dlo )
+            inc = geometry.distance( [lat2km(self.listPts[i-1].la), long2km(self.listPts[i-1].lo)], [lat2km(self.listPts[i].la), long2km(self.listPts[i].lo)] )
+            rDist += inc
+        return rDist
+    
     def modifyDate( self, nNbrSecondToAdd = 60*60):
         """
         add a time decay to a full track
@@ -486,6 +517,53 @@ class Gpx:
         return strFilename;
     # write - end
     
+    def render( self, img = None ):
+        """
+        render the track and return a cv2 image
+        - img: an image to write in
+        """
+        import cv2
+        import numpy        
+        nSizeX = 2048
+        nSizeY = 1400
+        nMargin = 20
+        nRealSizeX = nSizeX - nMargin*2
+        nRealSizeY = nSizeY - nMargin*2
+        if( img == None ):
+            img = numpy.zeros((nSizeY,nSizeX,3), numpy.uint8)
+            img[::] = (255,255,255)
+        
+        print( "Total distance: %s" % self.computeDistance() )        
+        # find min & max
+        minX = self.listPts[0].lo
+        maxX = self.listPts[0].lo
+        minY = self.listPts[0].la
+        maxY = self.listPts[0].la
+        for pt in self.listPts:
+            if( pt.lo > maxX ):
+                maxX = pt.lo
+            if( pt.lo < minX ):
+                minX = pt.lo
+            if( pt.la > maxY ):
+                maxY = pt.la
+            if( pt.la < minY ):
+                minY = pt.la
+                
+        px = None
+        pY = None
+        for pt in self.listPts:
+            x = (int)( (pt.lo-minX)*nRealSizeX/(maxX-minX) )+nMargin
+            y = nSizeY-1-( (int)( (pt.la-minY)*nRealSizeY/(maxY-minY) )+nMargin )
+            
+            cv2.circle( img, (x, y), 2, (0,0,0) )
+            if( px != None ):
+                cv2.line( img, (px, py), (x, y), (255,0,0), 1, 1 )
+            px = x
+            py = y
+            
+        return img
+        
+    # render - end
     
 # class Gpx - end
 
@@ -530,8 +608,8 @@ def generateWeek( strMondayDate ):
             print( gpxNew );
             strNewName = gpxNew.write( "/tmp/" );
             gpxNew.reset();
-            gpxNew.read( strNewName );
-            
+            gpxNew.read( strNewName );      
+# generateWeek  - end
             
                 
 
@@ -583,9 +661,19 @@ def accelerateOne( strRefFile, rDurationRatio ):
     strNewName = gpxNew.write( "/tmp/" );
 # duplicateOne - end
     
-    
-        
-        
+def render( strFilename, img = None ):
+    import cv2
+    gpx = Gpx();
+    gpx.read( strFilename );
+    img = gpx.render(img)
+    strWindowName = "track"
+    cv2.namedWindow( strWindowName, 0 )
+    cv2.moveWindow( strWindowName, 0,0 )
+    cv2.resizeWindow( strWindowName, img.shape[1]/2,img.shape[0]/2 )
+    cv2.imshow( strWindowName, img )
+    cv2.waitKey(0)
+    return img
+
         
         
 def autoTest():
@@ -608,8 +696,16 @@ def autoTest():
 if __name__ == "__main__":
     #autoTest();
     #generateWeek( "2015-03-16" );\
-    generateWeek( "2015-11-30" );
+    #~ generateWeek( "2015-11-30" );
     #~ duplicateOne( "../data/gpx/2015_01_21__Afternoon Ride aldeb-chateau_ref.gpx", "2015-04-02", 4*60*60+20*60, "Aldeb-Paris" );
     #~ duplicateOne( "../data/gpx/2015_01_21__Afternoon Ride chateau-candi_ref.gpx", "2015-04-02", 8*60*60, "RetourDodo" );
     #~ accelerateOne( "/tmp/a.gpx", 0.9 );
+    img = None
+    #~ img = render( "../data/gpx/2015_03_19__Morning_Ride_ref.gpx" )
+    img = render( "../data/gpx/Lunch_Run_bug_gps.gpx", img )
+    #~ img = render( "../data/gpx/Lunch_Run_bug_gps2.gpx" )
+    
+    #~ render( "../data/gpx/2015_03_19__Evening_Ride_ref.gpx", img )
+    
+    
     
