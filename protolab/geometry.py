@@ -174,7 +174,7 @@ def compute_distance_rect_to_point_return_dist_and_pt( recttopleft, rectbottomri
 # compute_distance_rect_to_point_returnpoint - end    
     
 def compute_distance_rect_to_point( recttopleft, rectbottomright, pt ):
-    res = compute_distance_rect_to_point_return_dist_and_point( recttopleft, rectbottomright, pt )
+    res = compute_distance_rect_to_point_return_dist_and_pt( recttopleft, rectbottomright, pt )
     return res[0]
 # compute_distance_rect_to_point - end
     
