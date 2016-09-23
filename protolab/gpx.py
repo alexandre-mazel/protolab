@@ -687,13 +687,20 @@ class Gpx:
     # render - end
     
     def correctGps( self ):
-        for i in range( 1, len(self.listPts) ):
+        for i in range( 1, len(self.listPts)-1 ):
             inc = distanceCoordLatLong2km( self.listPts[i-1], self.listPts[i] )/(self.listPts[i].t-self.listPts[i-1].t)
             # 20km/h => 5.5m /sec
-            if inc > 0.006:
-                rLissage = 0.85
-                self.listPts[i].la = self.listPts[i-1].la * rLissage + self.listPts[i].la * (1.-rLissage)
-                self.listPts[i].lo = self.listPts[i-1].lo * rLissage + self.listPts[i].lo * (1.-rLissage)
+            if inc > 0.005:
+                rLissage = 0.8
+                if inc > 0.012:
+                    rLissage = 0.95
+                #~ self.listPts[i].la = self.listPts[i-1].la * rLissage + self.listPts[i].la * (1.-rLissage)
+                #~ self.listPts[i].lo = self.listPts[i-1].lo * rLissage + self.listPts[i].lo * (1.-rLissage)
+                    
+                medla = ( self.listPts[i-1].la+self.listPts[i+1].la) / 2
+                medlo = ( self.listPts[i-1].lo+self.listPts[i+1].lo) / 2
+                self.listPts[i].la = medla * rLissage + self.listPts[i].la * (1.-rLissage)
+                self.listPts[i].lo = medlo * rLissage + self.listPts[i].lo * (1.-rLissage)
         
     
 # class Gpx - end
@@ -799,7 +806,8 @@ def render( strFilename, img = None ):
     gpx.printInfo()
     img = gpx.render(img)
     print( "----- lissage ---- " )
-    gpx.correctGps()
+    for i in range(10):
+        gpx.correctGps()
     gpx.printInfo()
     img = gpx.render(img, (0,255,0) )
     strWindowName = "track"
@@ -839,9 +847,9 @@ if __name__ == "__main__":
     img = None
     #~ img = render( "../data/gpx/2015_03_19__Morning_Ride_ref.gpx" )
     #~ img = render( "../data/gpx/Lunch_Run_bug_gps.gpx", img )
-    #~ img = render( "../data/gpx/Lunch_Run_bug_gps2.gpx" )    
+    img = render( "../data/gpx/Lunch_Run_bug_gps2.gpx" )    
     #~ render( "../data/gpx/2015_03_19__Evening_Ride_ref.gpx", img )
-    img = render( "../data/gpx/2016-09-23_-_Morning_Run_13.5km__5.28kmh__1h13m58.gpx", img )
+    #~ img = render( "../data/gpx/2016-09-23_-_Morning_Run_13.5km__5.28kmh__1h13m58.gpx", img )
     
     
     
