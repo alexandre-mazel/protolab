@@ -846,8 +846,8 @@ if __name__ == "__main__":
     #~ accelerateOne( "/tmp/a.gpx", 0.9 );
     img = None
     #~ img = render( "../data/gpx/2015_03_19__Morning_Ride_ref.gpx" )
-    #~ img = render( "../data/gpx/Lunch_Run_bug_gps.gpx", img )
-    img = render( "../data/gpx/Lunch_Run_bug_gps2.gpx" )    
+    img = render( "../data/gpx/Lunch_Run_bug_gps.gpx", img )
+    #~ img = render( "../data/gpx/Lunch_Run_bug_gps2.gpx" )    
     #~ render( "../data/gpx/2015_03_19__Evening_Ride_ref.gpx", img )
     #~ img = render( "../data/gpx/2016-09-23_-_Morning_Run_13.5km__5.28kmh__1h13m58.gpx", img )
     
