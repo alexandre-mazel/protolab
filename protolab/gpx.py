@@ -11,17 +11,59 @@ import random
 import time
 import xml.dom.minidom # for xml parsing
 
-def long2km( rLong ):
-    """
-    convert a longitude to a km (from the 0,0 of the earth)
-    """
-    return rLong*30000/360
+#~ def long2km( rLong ):
+    #~ """
+    #~ convert a longitude to a km (from the 0,0 of the earth)
+    #~ """
+    #~ return rLong*20000/360
 
-def lat2km( rLat ):
+#~ def lat2km( rLat ):
+    #~ """
+    #~ convert a latitude to a km (from the 0,0 of the earth)
+    #~ """
+    #~ return rLat*20000/360
+    
+def distanceCoordLatLong2km( pt1, pt2 ):
     """
-    convert a latitude to a km (from the 0,0 of the earth)
+    convert 2 coordinates long/lat to a distance in km
     """
-    return rLat*25000/360
+    #~ import geometry    
+    #~ d = geometry.distance( [lat2km(pt1[0]), long2km(pt1[1])], [lat2km(pt2[0]), long2km(pt2[1])] )
+    import math
+    if isinstance( pt1, list ):
+        la1, lo1 = pt1
+        la2, lo2 = pt2
+    else:
+        la1 = pt1.la
+        lo1 = pt1.lo
+        la2 = pt2.la
+        lo2 = pt2.lo
+            
+    #~ rDeltaLat= la1 - la2
+    #~ rDeltaLon= lo1 - lo2
+    #~ rCenterLat= ( la1 + la2) / 2
+    #~ rCenterLatEnRadians = rCenterLat
+    #~ d = math.sqrt( rDeltaLat*rDeltaLat + math.pow(math.cos( rCenterLatEnRadians )*rDeltaLon, 2) )    
+
+    rlat1 = math.pi * la1 / 180
+    rlat2 = math.pi * la2 / 180
+    rlon1 = math.pi * lo1 / 180
+    rlon2 = math.pi * lo2 / 180
+ 
+    theta = lo1 - lo2
+    rtheta = math.pi * theta/180
+ 
+    dist = math.sin(rlat1) * math.sin(rlat2) + math.cos(rlat1) * math.cos(rlat2) * math.cos(rtheta)
+    dist = math.acos(dist)
+    dist = dist * 180/math.pi
+    dist = dist * 60 * 1.1515
+ 
+    dist = dist * 1.609344 # => km
+    
+    return dist
+# distanceCoordLatLong2km - end
+
+print distanceCoordLatLong2km( [48.73021, 9.34456], [48.72473,9.36872] )
     
 def floatToStrComplete( f, nLimitToNbrDecimal = -1 ):
     """
@@ -94,6 +136,30 @@ def gpxTimeToTime( timeToConvert ):
     t = time.mktime(dt.timetuple()) + dt.microsecond / 1E6 # using utctimetuple or just timetuple
     return t;
     
+def timeToStr( t ):
+    """
+    return a time in sec to a string
+    """
+    rCent = int( (t - int(t)) * 1000 )
+    t = int(t)
+    rSec = t % 60
+    t = (t - rSec)/60
+    rMin = t % 60
+    t = (t - rMin)/60    
+    rHour = t % 24
+    t = (t - rMin)/24
+    strOut = ""
+    if t > 0:
+        strOut += "%dj" % t
+    if rHour > 0:
+        strOut += "%dh" % rHour
+    if rMin > 0:
+        strOut += "%dm" % rMin
+    if rSec > 0:
+        strOut += "%ds" % rSec
+    if rCent > 0:
+        strOut += "%03d" % rCent
+    return strOut
 #~ def timeToGpxTime( timeToConvert ):
     #~ """
     #~ convert a time to a Gpx Time
@@ -273,7 +339,7 @@ class Pt:
         """
         dt, la, lo, el: time object in local area, latitude, longitude, elevation in meter
         """
-        self.t = t
+        self.t = t # the time as a float (python-time style)
         self.la = la
         self.lo = lo
         self.el = el
@@ -281,8 +347,8 @@ class Pt:
     def __str__( self ):
         strOut = "";
         strOut += "-- t: %s\n" % timeToGpxTime( self.t );
-        strOut += "-- la: %s\n" % self.la;
-        strOut += "-- lo: %s\n" % self.lo;
+        strOut += "-- la: %s\n" % self.la; # lat: le Y
+        strOut += "-- lo: %s\n" % self.lo; # long: le X
         strOut += "-- el: %s\n" % self.el;        
         return strOut;
         
@@ -462,6 +528,9 @@ class Gpx:
         self.listPts = newPts;
     # modifySpeed - end
     
+    def computeTotalTime( self ):
+        return self.listPts[-1].t - self.listPts[0].t
+    
     def computeDistance( self ):
         import geometry
         rDist = 0
@@ -470,9 +539,55 @@ class Gpx:
             #~ dlo = self.listPts[i].lo - self.listPts[i-1].lo
             #~ dla = lat2km( dla )
             #~ dlo = lat2km( dlo )
-            inc = geometry.distance( [lat2km(self.listPts[i-1].la), long2km(self.listPts[i-1].lo)], [lat2km(self.listPts[i].la), long2km(self.listPts[i].lo)] )
+            #~ inc = geometry.distance( [lat2km(self.listPts[i-1].la), long2km(self.listPts[i-1].lo)], [lat2km(self.listPts[i].la), long2km(self.listPts[i].lo)] )
+            inc = distanceCoordLatLong2km( self.listPts[i-1], self.listPts[i] )
             rDist += inc
         return rDist
+        
+    def computeAvgPace( self ):
+        """
+        return pace in second (how much second to make 1km)
+        """
+        d = self.computeDistance()
+        t = self.computeTotalTime()
+        return t/d
+    
+    def computePaceSplited( self, rLenSplit = 1., bOutputInStr = True ):
+        """
+        compute avg pace over every segment
+        - rLenSplit: change length of a split (default 1km)
+        """
+        tBegin = self.listPts[0].t
+        d = 0.
+        tinc = 0 # t incremented from point to point
+        bPauseDetected = False
+        splits = []
+        for i in range( 1, len(self.listPts) ):
+            inc = distanceCoordLatLong2km( self.listPts[i-1], self.listPts[i] )
+            d += inc
+            if( inc > 0.001 ):
+                tinc += self.listPts[i].t - self.listPts[i-1].t
+            else:
+                # pause detected
+                #~ print( "pause..." ) # happens very rarely...
+                bPauseDetected = True
+            
+            if( d >= rLenSplit or i == len(self.listPts)-1 ):
+                t = self.listPts[i].t - tBegin
+                v = t/d
+                if bPauseDetected:
+                    vWithoutPause = tinc/d
+                    print( "DBG: split sans pause: %s" % timeToStr( vWithoutPause ) )
+                if bOutputInStr:
+                    v = timeToStr( v )
+                splits.append(v)
+                d = 0
+                tinc = 0
+                bPauseDetected = False
+                tBegin = self.listPts[i].t
+        return splits
+    # computePaceSplited - end
+        
     
     def modifyDate( self, nNbrSecondToAdd = 60*60):
         """
@@ -517,7 +632,14 @@ class Gpx:
         return strFilename;
     # write - end
     
-    def render( self, img = None ):
+    def printInfo( self ):
+        print( "Total Time: %s" %  timeToStr(self.computeTotalTime()) )
+        print( "Total distance: %s" % self.computeDistance() )
+        print( "Avg pace: %s" % timeToStr(self.computeAvgPace()) )
+        print( "Split: %s" % self.computePaceSplited() )
+    # printInfo - end
+    
+    def render( self, img = None, colorTrace = (255,0,0) ):
         """
         render the track and return a cv2 image
         - img: an image to write in
@@ -533,7 +655,6 @@ class Gpx:
             img = numpy.zeros((nSizeY,nSizeX,3), numpy.uint8)
             img[::] = (255,255,255)
         
-        print( "Total distance: %s" % self.computeDistance() )        
         # find min & max
         minX = self.listPts[0].lo
         maxX = self.listPts[0].lo
@@ -557,13 +678,23 @@ class Gpx:
             
             cv2.circle( img, (x, y), 2, (0,0,0) )
             if( px != None ):
-                cv2.line( img, (px, py), (x, y), (255,0,0), 1, 1 )
+                cv2.line( img, (px, py), (x, y), colorTrace, 1, 1 )
             px = x
             py = y
             
         return img
         
     # render - end
+    
+    def correctGps( self ):
+        for i in range( 1, len(self.listPts) ):
+            inc = distanceCoordLatLong2km( self.listPts[i-1], self.listPts[i] )/(self.listPts[i].t-self.listPts[i-1].t)
+            # 20km/h => 5.5m /sec
+            if inc > 0.006:
+                rLissage = 0.85
+                self.listPts[i].la = self.listPts[i-1].la * rLissage + self.listPts[i].la * (1.-rLissage)
+                self.listPts[i].lo = self.listPts[i-1].lo * rLissage + self.listPts[i].lo * (1.-rLissage)
+        
     
 # class Gpx - end
 
@@ -665,7 +796,12 @@ def render( strFilename, img = None ):
     import cv2
     gpx = Gpx();
     gpx.read( strFilename );
+    gpx.printInfo()
     img = gpx.render(img)
+    print( "----- lissage ---- " )
+    gpx.correctGps()
+    gpx.printInfo()
+    img = gpx.render(img, (0,255,0) )
     strWindowName = "track"
     cv2.namedWindow( strWindowName, 0 )
     cv2.moveWindow( strWindowName, 0,0 )
@@ -702,10 +838,11 @@ if __name__ == "__main__":
     #~ accelerateOne( "/tmp/a.gpx", 0.9 );
     img = None
     #~ img = render( "../data/gpx/2015_03_19__Morning_Ride_ref.gpx" )
-    img = render( "../data/gpx/Lunch_Run_bug_gps.gpx", img )
-    #~ img = render( "../data/gpx/Lunch_Run_bug_gps2.gpx" )
-    
+    #~ img = render( "../data/gpx/Lunch_Run_bug_gps.gpx", img )
+    #~ img = render( "../data/gpx/Lunch_Run_bug_gps2.gpx" )    
     #~ render( "../data/gpx/2015_03_19__Evening_Ride_ref.gpx", img )
+    img = render( "../data/gpx/2016-09-23_-_Morning_Run_13.5km__5.28kmh__1h13m58.gpx", img )
+    
     
     
     
