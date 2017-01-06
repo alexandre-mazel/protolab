@@ -496,7 +496,7 @@ def generateWeek( strMondayDate ):
     """
     nNbrSecPerDay = 60*60*24;
     nWinterToSummer = 0;
-    #~ nWinterToSummer = -2*60*60; # enable this when ref is in winter and week in summer
+    nWinterToSummer = -2*60*60; # enable this when ref is in winter and week in summer
     for strRefName in ["2015_03_19__Morning_Ride_ref","2015_03_19__Evening_Ride_ref"]:    
         strName = "candi-issy";
         bEvening = "Evening" in strRefName;
@@ -608,7 +608,7 @@ def autoTest():
 if __name__ == "__main__":
     #autoTest();
     #generateWeek( "2015-03-16" );\
-    generateWeek( "2015-11-30" );
+    generateWeek( "2016-08-29" );
     #~ duplicateOne( "../data/gpx/2015_01_21__Afternoon Ride aldeb-chateau_ref.gpx", "2015-04-02", 4*60*60+20*60, "Aldeb-Paris" );
     #~ duplicateOne( "../data/gpx/2015_01_21__Afternoon Ride chateau-candi_ref.gpx", "2015-04-02", 8*60*60, "RetourDodo" );
     #~ accelerateOne( "/tmp/a.gpx", 0.9 );
