@@ -797,7 +797,22 @@ def accelerateOne( strRefFile, rDurationRatio ):
     print( gpxNew );
     
     strNewName = gpxNew.write( "/tmp/" );
-# duplicateOne - end
+# accelerateOne - end
+
+def duplicateOneSlightChange( strRefFile, rSlightChangeRatio = 0.01 ):
+    """
+    Take a reference run, change the speed then save it
+    """
+    gpx = Gpx();
+    gpx.read( strRefFile );
+    gpxNew = Gpx();
+    gpxNew.copy( gpx );
+    gpxNew.changeCreator();
+    gpxNew.modify( rSlightChangeRatio );
+    print( gpx );
+    print( gpxNew );
+    strNewName = gpxNew.write( "/tmp/" );
+# duplicateOneSlightChange - end
     
 def render( strFilename, img = None ):
     import cv2
@@ -846,11 +861,11 @@ if __name__ == "__main__":
     #~ accelerateOne( "/tmp/a.gpx", 0.9 );
     img = None
     #~ img = render( "../data/gpx/2015_03_19__Morning_Ride_ref.gpx" )
-    img = render( "../data/gpx/Lunch_Run_bug_gps.gpx", img )
+    #img = render( "../data/gpx/Lunch_Run_bug_gps.gpx", img )
     #~ img = render( "../data/gpx/Lunch_Run_bug_gps2.gpx" )    
     #~ render( "../data/gpx/2015_03_19__Evening_Ride_ref.gpx", img )
     #~ img = render( "../data/gpx/2016-09-23_-_Morning_Run_13.5km__5.28kmh__1h13m58.gpx", img )
-    
+    duplicateOneSlightChange( "/tmp/Balade_tahitienne_chaud_et_humide.gpx" )
     
     
     
